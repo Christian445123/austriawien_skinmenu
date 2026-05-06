@@ -7,16 +7,24 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 ## Changelog
 
-### 2026-05-06
-- **Bugfix:** `MySQL.query` → `MySQL.update` in `saveSkin` (server.lua:84 – `attempt to compare number with table`)
-- **Layout:** Menü ist kein Vollbild mehr – `#app` bekommt `top: 50% / transform: translateY(-50%) / height: 82vh` statt `inset: 0`; Panels erben die Höhe von `#app` (kein eigenes `height` mehr nötig)
-- **Timing:** Skin-Menü öffnet jetzt erst **nach** der Charakter-Erstellung, nicht mehr währenddessen
-- **Timing-Fix 2:** Ursache für "Menü erscheint trotzdem zu früh" gefunden: `TriggerClientEvent` ohne `RegisterNetEvent` wird vom Client ignoriert. Lösung: `zr_player_created()` Hook in `zr-config/zr-build-c.lua` überschrieben – feuert jetzt `TriggerEvent('austriawien_skinmenu:charCreated')` (lokaler Event, kein RegisterNetEvent nötig)
+### 2026-05-06 (Overhaul)
+- **Bugfix:** Drag-&-Drop war komplett defekt wegen dupliziertem HTML in `index.html` – `index.html` vollständig neu geschrieben
+- **Neu:** Linkes Panel jetzt als **Körperzonen-Avatar** (KOPF / OBERKÖRPER / HÄNDE / UNTERKÖRPER / SCHUHE) statt scrollbarer Slot-Liste
+- **Drag-Drop:** Body-Zonen sind großflächige Drop-Targets; falsche Zone = Schüttel-Animation
+- **Neu:** `Config.LicenseKey` – Resource startet nicht ohne gültigen Schlüssel
+- **Neu:** `Config.EUPResources` – automatischer EUP-Bild-Scanner (`img/`-Ordner externer Resources)
+- **Neu:** EUP-Bilder werden als `cfx-nui-{resource}/img/{slot}/{id}.png` nachgeladen wenn kein lokales Bild vorhanden
+- **Bugfix:** `zr_player_created()` Hook: `Wait(1500)` in `CreateThread` damit das Identity-NUI sich schließt bevor das Skin-Menü erscheint
+- **Neu:** Kamera-Buttons jetzt im linken Panel unten (statt Mitte)
+
+### 2026-05-06 (Basis)
+- **Bugfix:** `MySQL.query` → `MySQL.update` in `saveSkin` (`attempt to compare number with table`)
+- **Layout:** Menü ist kein Vollbild mehr – `height: 82vh; top: 50%; transform: translateY(-50%)`
+- **Timing:** Skin-Menü öffnet erst nach der Charakter-Erstellung
 - **Neu:** `Config.IdentityResource` – Auswahl zwischen `'zr-identity'`, `'esx_identity'` oder `''`
-- **Neu:** `zr_player_created()` in `zr-identity/zr-config/zr-build-c.lua` als primärer Hook (client-seitig, zuverlässiger als Server→Client Event)
-- **Neu:** 3-Panel-Layout (links Slots | Mitte transparent/live Charakter | rechts Garderobe)
+- **Neu:** `zr_player_created()` Hook in `zr-identity/zr-config/zr-build-c.lua`
+- **Neu:** 3-Panel-Layout (links | Mitte transparent | rechts Garderobe)
 - **Neu:** `Config.CameraSideOffset` – zentriert den Charakter im transparenten Mittelbereich
-- **Neu:** README erstellt
 
 ---
 
@@ -43,6 +51,13 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 ---
 
 ## Konfiguration (`config.lua`)
+
+### Lizenz ⚠️
+```lua
+Config.LicenseKey = 'ABCD-1234-EFGH-5678'
+```
+Ohne gültigen Schlüssel stoppt die Resource beim Start automatisch.  
+Schlüssel auf [keymaster.fivem.net](https://keymaster.fivem.net) registrieren und hier eintragen.
 
 ### Debug
 ```lua
@@ -93,15 +108,21 @@ Config.FirstTimeSetup  = true    -- Skin-Menü beim ersten Login automatisch öf
 
 ## Integration mit zr-identity
 
-In `zr-identity/zr-config/zr-build-s.lua` ist `zr_custom_spawn_menu` bereits angepasst:
+Der primäre Hook ist in `zr-identity/zr-config/zr-build-c.lua` (client-seitig, zuverlässiger als Server→Client):
 
 ```lua
-function zr_custom_spawn_menu(zr_source, zr_fdata)
-    TriggerClientEvent('austriawien_skinmenu:charCreated', zr_source)
+function zr_player_created()
+    CreateThread(function()
+        Wait(1500)  -- Warten bis das Identity-NUI sich vollständig schließt
+        TriggerEvent('austriawien_skinmenu:charCreated')
+    end)
 end
 ```
 
-Diese Funktion wird von zr-identity aufgerufen **nachdem** der Spieler auf „Create character" geklickt hat. Das Skin-Menü erscheint dann erst zu diesem Zeitpunkt – nicht während der Charakter-Erstellung.
+`TriggerEvent` ist ein **lokaler** Client-Event – kein `RegisterNetEvent` nötig.  
+Die `Wait(1500)` verhindert, dass das Skin-Menü erscheint bevor das Identity-NUI weg ist.
+
+> **Hinweis:** Der Server-Hook über `zr-build-s.lua` (`TriggerClientEvent`) erfordert `RegisterNetEvent` auf dem Client und ist daher weniger zuverlässig. Der Client-Hook ist die bevorzugte Lösung.
 
 ---
 
@@ -138,26 +159,63 @@ Fehlt ein Bild, wird automatisch das Emoji-Icon als Fallback angezeigt.
 
 ---
 
+## EUP-Bilder aus externen Resources
+
+Wenn EUP-Packs als separate FiveM-Resources vorhanden sind, kann das Skin-Menü deren Vorschaubilder automatisch einbinden.
+
+**1. `config.lua` anpassen:**
+```lua
+Config.EUPResources = { 'eup-stream', 'eup-sp' }
+```
+
+**2. EUP-Resource: Bilder unter `img/` ablegen:**
+```
+eup-stream/img/jacket/0.png
+eup-stream/img/jacket/1.png
+eup-stream/img/legs/0.png
+```
+
+**3. `fxmanifest.lua` der EUP-Resource: Bilder als Files registrieren:**
+```lua
+files {
+    'img/**/*.png',
+    'img/**/*.jpg',
+    'img/**/*.webp'
+}
+```
+
+Der Server scannt beim Start alle angegebenen Resources automatisch und baut ein Manifest. Der Browser lädt Bilder dann per `cfx-nui-{resource}/img/{slot}/{id}.png`. Lokale Bilder in `html/img/` haben immer Vorrang.
+
+---
+
 ## Layout-Übersicht
 
 ```
-┌──────────────┬──────────────────────────┬─────────────────┐
-│  CHARAKTER   │                          │  GARDEROBE      │
-│              │   Transparent –          │                 │
-│  Slot-Icons  │   Charakter live         │  Kategorie-Tabs │
-│  (Drag-Ziel) │   sichtbar (3D)          │  Item-Karten    │
-│              │                          │  Textur-Slider  │
-│              │   [◄  DREHEN  ►]         │  Gesicht-Editor │
-│              │                          │  [ABBRECHEN]    │
-│              │                          │  [SPEICHERN]    │
-└──────────────┴──────────────────────────┴─────────────────┘
-    280 px           transparent                360 px
+┌─────────────────┬──────────────────────────┬─────────────────┐
+│  CHARAKTER      │                          │  GARDEROBE      │
+│  ┌─ KOPF ─────┐ │   Transparent –          │                 │
+│  │ Hut Haare  │ │   Charakter live         │  Kategorie-Tabs │
+│  │ Brille …   │ │   sichtbar (3D)          │  Item-Karten    │
+│  ├─ OBERKÖRPER┤ │                          │  Textur-Slider  │
+│  │ Jacke Hemd │ │                          │  Gesicht-Editor │
+│  │ Arme Weste │ │                          │                 │
+│  ├─ HÄNDE ────┤ │                          │  [ABBRECHEN]    │
+│  │ Uhr Armbd. │ │                          │  [SPEICHERN]    │
+│  ├─ UNTERKÖRP.┤ │                          │                 │
+│  │ Hose       │ │                          │                 │
+│  ├─ SCHUHE ───┤ │                          │                 │
+│  │ Schuhe     │ │                          │                 │
+│  └────────────┘ │                          │                 │
+│  [◄ DREHEN ►]   │                          │                 │
+└─────────────────┴──────────────────────────┴─────────────────┘
+       280 px              transparent               360 px
 ```
 
 **Bedienung:**
-- Item aus der Garderobe (rechts) **auf einen Slot** (links) ziehen → Kleidung wird angelegt
+- Item aus der Garderobe (rechts) **auf eine Körperzone** (links) ziehen → Kleidung wird angelegt
+- Item auf eine **falsche Zone** fallen lassen → Schüttel-Animation als Feedback
 - Klick auf einen Slot → Garderobe springt zur passenden Kategorie
-- Kamera-Buttons drehen den Charakter in Echtzeit
+- Kamera-Buttons (unten links) drehen den Charakter in Echtzeit
 - **SPEICHERN** → Skin wird in der Datenbank gespeichert
 - **ABBRECHEN** → Alle Änderungen werden rückgängig gemacht
 
@@ -231,14 +289,42 @@ austriawien_skinmenu/
 
 ### Skin-Menü erscheint während der Charakter-Erstellung
 **Ursache 1:** `Config.IdentityResource` nicht oder falsch gesetzt.  
-**Ursache 2 (zr-identity):** `TriggerClientEvent` vom Server braucht `RegisterNetEvent` auf dem Client – wurde ignoriert.  
+**Ursache 2 (zr-identity):** `TriggerClientEvent` vom Server braucht `RegisterNetEvent` auf dem Client – ohne das wird der Event ignoriert.  
 **Lösung:** `zr_player_created()` in `zr-identity/zr-config/zr-build-c.lua` überschreiben:
 ```lua
 function zr_player_created()
-    TriggerEvent('austriawien_skinmenu:charCreated')
+    CreateThread(function()
+        Wait(1500)
+        TriggerEvent('austriawien_skinmenu:charCreated')
+    end)
 end
 ```
-`TriggerEvent` ist ein **lokaler** Client-Event – kein `RegisterNetEvent` nötig. Diese Funktion wird vom kompilierten zr-identity aufgerufen sobald der Charakter erstellt wurde.
+
+---
+
+### Resource startet nicht / stoppt sofort
+**Ursache:** `Config.LicenseKey` ist leer.  
+**Lösung:** Schlüssel auf keymaster.fivem.net registrieren und in `config.lua` eintragen:
+```lua
+Config.LicenseKey = 'DEIN-SCHLUESSEL-HIER'
+```
+
+---
+
+### Drag-&-Drop funktioniert nicht
+**Ursache:** Item auf einen falschen Zonen-Typ fallen gelassen (z.B. Schuh-Item auf KOPF-Zone).  
+**Erkennung:** Die Zone zeigt eine Schüttel-Animation wenn der Typ nicht passt.  
+**Lösung:** Item auf die passende Körperzone fallen lassen (Hose → UNTERKÖRPER, Jacke → OBERKÖRPER usw.)
+
+---
+
+### EUP-Bilder werden nicht angezeigt
+**Ursache 1:** `Config.EUPResources` ist leer oder Resource-Name falsch.  
+**Ursache 2:** Die EUP-Resource hat keine `files`-Einträge im `fxmanifest.lua`.  
+**Lösung:** Im `fxmanifest.lua` der EUP-Resource eintragen:
+```lua
+files { 'img/**/*.png', 'img/**/*.jpg', 'img/**/*.webp' }
+```
 
 ---
 

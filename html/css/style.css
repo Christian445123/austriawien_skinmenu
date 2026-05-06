@@ -120,16 +120,91 @@ html, body {
     background: rgba(231,76,60,.12);
 }
 
-/* Scrollbereich für Slot-Gruppen */
-.slot-scroll {
+/* ─── Avatar-Scroll (Körperzonen-Container) ──────────────────────────────── */
+.avatar-scroll {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--gold) transparent;
 }
-.slot-scroll::-webkit-scrollbar { width: 3px; }
-.slot-scroll::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+.avatar-scroll::-webkit-scrollbar { width: 3px; }
+.avatar-scroll::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+/* ─── Körper-Zonen (Drop-Targets) ───────────────────────────────────────── */
+.body-zone {
+    border: 1.5px solid rgba(212,160,23,.2);
+    border-radius: 8px;
+    background: rgba(27,27,42,.5);
+    transition: var(--trans);
+    overflow: hidden;
+    cursor: pointer;
+}
+.body-zone:hover {
+    border-color: rgba(212,160,23,.5);
+    background: rgba(27,27,42,.75);
+}
+.body-zone.drag-over-zone {
+    border-color: var(--gold-glow);
+    background: rgba(212,160,23,.1);
+    box-shadow: 0 0 16px rgba(212,160,23,.25);
+}
+.body-zone.reject {
+    animation: zoneReject .35s ease;
+}
+@keyframes zoneReject {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-6px); }
+    75%     { transform: translateX(6px); }
+}
+
+.zone-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    background: rgba(0,0,0,.25);
+    border-bottom: 1px solid rgba(212,160,23,.12);
+}
+.zone-icon  { font-size: 14px; }
+.zone-label {
+    flex: 1;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+}
+.zone-drop-hint {
+    font-size: 9px;
+    color: var(--text-dim);
+    opacity: 0;
+    transition: opacity .2s;
+}
+.body-zone.drag-over-zone .zone-drop-hint,
+.body-zone:hover .zone-drop-hint { opacity: 1; }
+
+.zone-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px;
+}
+
+/* ─── Kamera-Bar im linken Panel ─────────────────────────────────────────── */
+.cam-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: rgba(13,13,20,.95);
+}
 
 /* ─── Mittleres Panel – Transparent ─────────────────────────────────────── */
 .panel-center {
@@ -181,23 +256,10 @@ html, body {
     text-shadow: 0 1px 4px rgba(0,0,0,.8);
 }
 
-/* Kamera-Controls (jetzt in der Mitte unten) */
-.camera-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(13,13,20,.75);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--border);
-    border-radius: 30px;
-    padding: 6px 16px;
-}
 .cam-label {
     font-size: 10px;
     letter-spacing: 2px;
     color: var(--text-dim);
-    min-width: 52px;
-    text-align: center;
 }
 .btn-rotate {
     background: none;
@@ -208,6 +270,7 @@ html, body {
     cursor: pointer;
     font-size: 11px;
     transition: var(--trans);
+    pointer-events: all;
 }
 .btn-rotate:hover {
     background: var(--gold);
@@ -215,38 +278,19 @@ html, body {
     border-color: var(--gold);
 }
 
-/* Slot-Gruppen */
-.slot-groups { padding: 8px 8px 14px; }
-
-.slot-group { margin-bottom: 12px; }
-
-.slot-group-label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    color: var(--text-dim);
-    padding: 4px 6px;
-    margin-bottom: 4px;
-}
-
-.slot-row {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 4px;
-}
-
-/* Einzelner Equip-Slot */
+/* Einzelner Equip-Slot – kompakter in der Body-Zone */
 .equip-slot {
-    flex: 1;
+    width: 56px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px 4px;
+    padding: 5px 3px;
     background: var(--bg-card);
-    border: 2px dashed rgba(212,160,23,.2);
-    border-radius: var(--radius);
+    border: 1.5px dashed rgba(212,160,23,.2);
+    border-radius: 6px;
     cursor: pointer;
     transition: var(--trans);
-    min-height: 58px;
+    min-height: 52px;
     position: relative;
 }
 .equip-slot:hover {

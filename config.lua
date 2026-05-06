@@ -63,3 +63,19 @@ Config.ImageBasePath = 'img'
 -- Unterstützte Bildformate, die der Browser nacheinander versucht zu laden.
 -- Erste Übereinstimmung gewinnt.
 Config.ImageFormats = { 'png', 'jpg', 'webp' }
+
+-- ─── Lizenz ──────────────────────────────────────────────────────────────────
+-- Registriere diese Resource auf keymaster.fivem.net und trage den
+-- Schlüssel hier ein. Ohne gültigen Schlüssel startet die Resource NICHT.
+-- Beispiel: Config.LicenseKey = 'ABCD-1234-EFGH-5678'
+Config.LicenseKey = ''
+
+-- ─── EUP-Packs (automatische Bildauslese) ────────────────────────────────────
+-- Liste der Resource-Namen, deren img/-Ordner nach Vorschaubildern
+-- durchsucht werden soll. Bilder müssen unter
+--   {resource}/img/{slotId}/{drawableId}.png  (z.B. jacket/0.png)
+-- abgelegt und im fxmanifest der EUP-Resource unter files registriert sein:
+--   files { 'img/**/*.png', 'img/**/*.jpg', 'img/**/*.webp' }
+-- Beispiel: Config.EUPResources = { 'eup-stream', 'eup-sp' }
+Config.EUPResources = {}
+

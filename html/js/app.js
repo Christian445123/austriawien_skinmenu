@@ -43,6 +43,7 @@ const state = {
     hairColor2:      0,
     imageBasePath:   'img',
     imageFormats:    ['png'],
+    eupManifest:     {},     // EUP-Ressourcen Bildmanifest { resName: { slotId: [ids] } }
     faceData: {
         shapeFirst: 0, shapeSecond: 0, shapeMix: 0.5,
         skinFirst: 0,  skinSecond: 0,  skinMix:  0.5,
@@ -53,28 +54,47 @@ const state = {
 
 // ─── Vorschau-Bild Hilfsfunktionen ───────────────────────────────────────────
 /**
- * Gibt den Pfad zum Vorschaubild zurück.
+ * Gibt den Pfad zum lokalen Vorschaubild zurück.
  * Ordner: html/img/{slotId}/{drawableId}.{format}
- * Bilder dort ablegen, der Browser lädt automatisch das erste vorhandene.
  */
 function imagePath(slotId, drawableId, format) {
     return `${state.imageBasePath}/${slotId}/${drawableId}.${format}`;
 }
 
 /**
+ * Gibt alle EUP-Bild-URLs für slot+drawable zurück (cfx-nui URLs).
+ * Gibt leeres Array zurück wenn kein EUP Manifest vorhanden.
+ */
+function eupImagePaths(slotId, drawableId) {
+    const manifest = state.eupManifest || {};
+    const paths = [];
+    for (const [resName, slots] of Object.entries(manifest)) {
+        if (slots[slotId] && slots[slotId].includes(drawableId)) {
+            for (const fmt of ['png', 'jpg', 'webp']) {
+                paths.push(`https://cfx-nui-${resName}/img/${slotId}/${drawableId}.${fmt}`);
+            }
+        }
+    }
+    return paths;
+}
+
+/**
  * Lädt das beste verfügbare Bild für eine Slot+Drawable Kombination.
- * Probiert alle konfigurierten Formate der Reihe nach.
+ * Probiert erst lokale Formate, dann EUP-Ressourcen.
  * Gibt ein <img>-Element zurück – bei Fehler wird es ausgeblendet.
  */
 function createPreviewImage(slotId, drawableId, fallbackIcon) {
-    const formats = state.imageFormats.slice();
-    const img     = document.createElement('img');
+    // Lokale Formate + EUP-URLs zusammenführen
+    const formats = state.imageFormats.slice().map(f => imagePath(slotId, drawableId, f));
+    const eupPaths = eupImagePaths(slotId, drawableId);
+    const allPaths = [...formats, ...eupPaths];
+
+    const img = document.createElement('img');
     img.className = 'item-card-img';
-    img.alt       = '';
+    img.alt = '';
 
     function tryNext() {
-        if (!formats.length) {
-            // Alle Formate versucht → kein Bild vorhanden, Fallback-Icon zeigen
+        if (!allPaths.length) {
             img.style.display = 'none';
             const parent = img.parentElement;
             if (parent) {
@@ -83,11 +103,10 @@ function createPreviewImage(slotId, drawableId, fallbackIcon) {
             }
             return;
         }
-        img.src = imagePath(slotId, drawableId, formats.shift());
+        img.src = allPaths.shift();
     }
 
     img.addEventListener('error', tryNext, { once: false });
-    // Sobald geladen: Icon ausblenden
     img.addEventListener('load', () => {
         img.removeEventListener('error', tryNext);
         const parent = img.parentElement;
@@ -100,6 +119,7 @@ function createPreviewImage(slotId, drawableId, fallbackIcon) {
     tryNext();
     return img;
 }
+
 
 // ─── NUI-Callback ─────────────────────────────────────────────────────────────
 async function nuiCallback(event, data = {}) {
@@ -377,40 +397,60 @@ function buildCategoryNav() {
     nav.appendChild(faceBtn);
 }
 
-// ─── Drag-and-Drop auf Equip-Slots ───────────────────────────────────────────
+// ─── Drag-and-Drop auf Equip-Slots & Body-Zonen ──────────────────────────────
 function setupEquipSlotDropTargets() {
+    // Einzelne Equip-Slots
     document.querySelectorAll('.equip-slot').forEach(slot => {
         const targetId = slot.dataset.slot;
 
-        slot.addEventListener('dragover', e => {
-            const dragId = e.dataTransfer.getData
-                ? null  // getData geht im dragover nicht in allen Browsern
-                : null;
-            e.preventDefault();
-            slot.classList.add('drag-over');
-        });
-
+        slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
         slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
 
         slot.addEventListener('drop', e => {
             e.preventDefault();
             slot.classList.remove('drag-over');
-
-            const srcId  = e.dataTransfer.getData('slotId');
-            const draw   = parseInt(e.dataTransfer.getData('drawable'));
-
-            // Nur wenn der Slot-Typ passt oder gleiche Kategorie
+            const srcId = e.dataTransfer.getData('slotId');
+            const draw  = parseInt(e.dataTransfer.getData('drawable'));
             if (srcId === targetId) {
                 applyDrawable(targetId, draw);
             } else {
-                // Ignorieren – falscher Slot
-                slot.classList.add('drag-over');
-                setTimeout(() => slot.classList.remove('drag-over'), 400);
+                // Falscher Slot-Typ → kurzes Aufleuchten als Feedback
+                slot.style.boxShadow = '0 0 10px rgba(231,76,60,.7)';
+                setTimeout(() => slot.style.boxShadow = '', 350);
             }
         });
 
         // Klick auf Slot → Kategorie öffnen
         slot.addEventListener('click', () => selectCategory(targetId));
+    });
+
+    // Body-Zonen als großflächige Drop-Targets
+    document.querySelectorAll('.body-zone').forEach(zone => {
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            zone.classList.add('drag-over-zone');
+        });
+        zone.addEventListener('dragleave', e => {
+            // Nur wenn wir die Zone wirklich verlassen (nicht nur in einen Kind-Element)
+            if (!zone.contains(e.relatedTarget)) {
+                zone.classList.remove('drag-over-zone');
+            }
+        });
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over-zone');
+            const srcId = e.dataTransfer.getData('slotId');
+            const draw  = parseInt(e.dataTransfer.getData('drawable'));
+            // Prüfen ob Zone einen passenden Slot enthält
+            const matchSlot = zone.querySelector(`.equip-slot[data-slot="${srcId}"]`);
+            if (matchSlot) {
+                applyDrawable(srcId, draw);
+            } else {
+                // Falscher Zonen-Typ → Schüttel-Animation
+                zone.classList.add('reject');
+                setTimeout(() => zone.classList.remove('reject'), 400);
+            }
+        });
     });
 }
 
@@ -650,6 +690,10 @@ window.addEventListener('message', e => {
     switch (data.type) {
         case 'openMenu':
             openMenu(data);
+            break;
+        case 'eupManifest':
+            // EUP-Bilder Manifest empfangen: { resourceName: { slotId: [0,1,2,...] } }
+            state.eupManifest = data.manifest || {};
             break;
     }
 });

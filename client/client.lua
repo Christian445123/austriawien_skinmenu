@@ -248,6 +248,8 @@ local function openSkinMenu()
         imageBasePath = Config.ImageBasePath or 'img',
         imageFormats  = Config.ImageFormats  or { 'png' }
     })
+    -- EUP-Manifest asynchron nachliefern
+    TriggerServerEvent('austriawien_skinmenu:getEUPManifest')
     dbg('NUI-Nachricht openMenu gesendet | %d Slots | %d maxValues', #slotDefs, (function() local n=0 for _ in pairs(getMaxValues()) do n=n+1 end return n end)())
 end
 
@@ -396,6 +398,13 @@ end, false)
 RegisterNetEvent('austriawien_skinmenu:openForTarget')
 AddEventHandler('austriawien_skinmenu:openForTarget', function()
     openSkinMenu()
+end)
+
+-- EUP-Manifest vom Server empfangen → an NUI weiterleiten
+RegisterNetEvent('austriawien_skinmenu:eupManifest')
+AddEventHandler('austriawien_skinmenu:eupManifest', function(manifest)
+    SendNUIMessage({ type = 'eupManifest', manifest = manifest })
+    dbg('EUP Manifest empfangen und an NUI weitergeleitet')
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
