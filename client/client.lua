@@ -400,10 +400,89 @@ AddEventHandler('austriawien_skinmenu:openForTarget', function()
     openSkinMenu()
 end)
 
--- ─── ESX Events ──────────────────────────────────────────────────────────────
-local skinLoaded = false
+-- ─── esx_skin kompatibler Event-Layer ────────────────────────────────────────
+-- esx_skin läuft NICHT. Wir registrieren dieselben Event-Namen so dass alle
+-- Ressourcen die esx_skin-Events nutzen automatisch mit unserem Menü arbeiten.
 
--- Skin beim Spawn laden (genau wie esx_skin es macht)
+local skinLoaded = false
+local lastSkin   = nil  -- Cache für esx_skin:getLastSkin Kompatibilität
+
+-- ── Spieler-Login: Skin laden ─────────────────────────────────────────────
+-- esx_identity / zr-identity triggern nach der Anmeldung 'esx_skin:playerRegistered'.
+-- Wir laden hier unseren Skin aus der DB.
+AddEventHandler('esx_skin:playerRegistered', function()
+    dbg('esx_skin:playerRegistered empfangen')
+    CreateThread(function()
+        while ESX == nil or not ESX.PlayerLoaded do Wait(100) end
+        if not skinLoaded then
+            skinLoaded = true
+            TriggerServerEvent('austriawien_skinmenu:loadSkin')
+        end
+    end)
+end)
+
+AddEventHandler('esx_skin:resetFirstSpawn', function()
+    dbg('esx_skin:resetFirstSpawn → reset skinLoaded')
+    skinLoaded = false
+end)
+
+-- Skin-Cache für andere Ressourcen (esx_skin Kompatibilität)
+AddEventHandler('esx_skin:getLastSkin', function(cb) cb(lastSkin) end)
+AddEventHandler('esx_skin:setLastSkin', function(skin) lastSkin = skin end)
+
+-- ── Menü-Events: alle esx_skin Varianten abfangen ────────────────────────
+-- Statt esx_skin's eigenem Menü öffnen wir unser AWskin-Menü.
+-- CancelEvent() verhindert dass andere Handler (falls vorhanden) reagieren.
+
+RegisterNetEvent('esx_skin:openSaveableMenu')
+AddEventHandler('esx_skin:openSaveableMenu', function()
+    CancelEvent()
+    dbg('esx_skin:openSaveableMenu → AWskin-Menü öffnen')
+    CreateThread(function() Wait(300); openSkinMenu() end)
+end)
+
+RegisterNetEvent('esx_skin:openMenu')
+AddEventHandler('esx_skin:openMenu', function()
+    CancelEvent()
+    dbg('esx_skin:openMenu → AWskin-Menü öffnen')
+    openSkinMenu()
+end)
+
+RegisterNetEvent('esx_skin:openRestrictedMenu')
+AddEventHandler('esx_skin:openRestrictedMenu', function()
+    CancelEvent()
+    dbg('esx_skin:openRestrictedMenu → AWskin-Menü öffnen')
+    openSkinMenu()
+end)
+
+RegisterNetEvent('esx_skin:openSaveableRestrictedMenu')
+AddEventHandler('esx_skin:openSaveableRestrictedMenu', function()
+    CancelEvent()
+    dbg('esx_skin:openSaveableRestrictedMenu → AWskin-Menü öffnen')
+    openSkinMenu()
+end)
+
+-- ── Unser Server antwortet auf loadSkin ──────────────────────────────────
+RegisterNetEvent('austriawien_skinmenu:applySkin')
+AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
+    dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
+    if firstLogin then
+        -- Kein Skin in DB → Menü öffnen (genau wie esx_skin:openSaveableMenu)
+        dbg('Erster Login → Menü öffnen')
+        CreateThread(function() Wait(300); openSkinMenu() end)
+        return
+    end
+    if not skinJson or skinJson == '' then return end
+    local skin = json.decode(skinJson)
+    if skin then
+        lastSkin = skin
+        applySkin(skin)
+    else
+        dbg('FEHLER: json.decode fehlgeschlagen')
+    end
+end)
+
+-- ── Fallback: esx:onPlayerSpawn falls playerRegistered nicht gefeuert wird ─
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
     if not skinLoaded then
@@ -412,29 +491,6 @@ AddEventHandler('esx:onPlayerSpawn', function()
     end
 end)
 
--- Server antwortet mit Skin-Daten
-RegisterNetEvent('austriawien_skinmenu:applySkin')
-AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
-    dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
-    if firstLogin then
-        -- Kein Skin in DB → Menü direkt öffnen (genau wie esx_skin:openSaveableMenu)
-        dbg('Erster Login → öffne AWskin-Menü')
-        CreateThread(function()
-            Wait(500)
-            openSkinMenu()
-        end)
-        return
-    end
-    if not skinJson or skinJson == '' then return end
-    local skin = json.decode(skinJson)
-    if skin then
-        applySkin(skin)
-    else
-        dbg('FEHLER: json.decode fehlgeschlagen')
-    end
-end)
-
--- Reset beim (Re)Connect
 AddEventHandler('esx:playerLoaded', function()
     dbg('esx:playerLoaded → reset')
     skinLoaded = false

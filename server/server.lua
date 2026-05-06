@@ -259,3 +259,44 @@ exports('getSkin', function(src)
     end
     return nil
 end)
+
+-- ─── esx_skin kompatibler Server-Layer ───────────────────────────────────────
+-- Damit alle Ressourcen die ESX.TriggerServerCallback('esx_skin:getPlayerSkin')
+-- oder TriggerServerEvent('esx_skin:save') nutzen, nahtlos funktionieren.
+
+ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer then cb(nil, nil) return end
+
+    local identifier = xPlayer.identifier
+    MySQL.query(
+        'SELECT skin FROM ?? WHERE identifier = ?',
+        { Config.DatabaseTable, identifier },
+        function(result)
+            local skin = nil
+            if result and result[1] and result[1].skin then
+                skin = json.decode(result[1].skin)
+            end
+            dbg('esx_skin:getPlayerSkin | %s | skin=%s', identifier, skin and 'ja' or 'nil')
+            cb(skin, nil)
+        end
+    )
+end)
+
+-- esx_skin:save: andere Ressourcen speichern Skin über diesen Event.
+-- Wir leiten in unser eigenes Save-System weiter.
+RegisterNetEvent('esx_skin:save')
+AddEventHandler('esx_skin:save', function(skin)
+    local src     = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer or type(skin) ~= 'table' then return end
+
+    local identifier = xPlayer.identifier
+    local skinJson   = json.encode(skin)
+    dbg('esx_skin:save abgefangen | %s | %d Bytes', identifier, #skinJson)
+
+    MySQL.update(
+        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
+        { Config.DatabaseTable, identifier, skinJson, skinJson }
+    )
+end)
