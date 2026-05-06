@@ -3,38 +3,50 @@
 Drag-&-Drop Skin-Menü für FiveM mit ESX-Framework.  
 Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
+**Drop-in-Ersatz für `esx_skin`** – alle `esx_skin`-Events werden von dieser Resource abgefangen, `esx_skin` muss **nicht** laufen.
+
 ---
 
 ## Changelog
 
-### 2026-05-06 (Overhaul)
-- **Bugfix:** Drag-&-Drop war komplett defekt wegen dupliziertem HTML in `index.html` – `index.html` vollständig neu geschrieben
-- **Neu:** Linkes Panel jetzt als **Körperzonen-Avatar** (KOPF / OBERKÖRPER / HÄNDE / UNTERKÖRPER / SCHUHE) statt scrollbarer Slot-Liste
-- **Drag-Drop:** Body-Zonen sind großflächige Drop-Targets; falsche Zone = Schüttel-Animation
-- **Neu:** `Config.LicenseKey` – Resource startet nicht ohne gültigen Schlüssel
-- **Neu:** `Config.EUPResources` – automatischer EUP-Bild-Scanner (`img/`-Ordner externer Resources)
-- **Neu:** EUP-Bilder werden als `cfx-nui-{resource}/img/{slot}/{id}.png` nachgeladen wenn kein lokales Bild vorhanden
-- **Bugfix:** `zr_player_created()` Hook: `Wait(1500)` in `CreateThread` damit das Identity-NUI sich schließt bevor das Skin-Menü erscheint
-- **Neu:** Kamera-Buttons jetzt im linken Panel unten (statt Mitte)
+### 2026-05-06 – Kamera & Banner
+- **Neu:** Kamera-Fokus per Zone – Kamera springt automatisch zu Kopf / Oberkörper / Hände / Beine / Schuhe wenn der entsprechende Slot ausgewählt wird
+- **Neu:** `shoes`-Slot hat eigene Zone (`shoes`) mit noch tieferer Kameraposition als `legs`
+- **Neu:** Startbanner in Schwarz/Weiß/Rot (Zeilen 1–3 + 7–8 Rot, Zeilen 4–6 Weiß)
+- **Entfernt:** Versionscheck via HTTP (`PerformHttpRequest`) – Banner erscheint jetzt sofort beim `onResourceStart`
+- **Fix:** `fxmanifest.lua` enthält keine `html/img/**/*.png`-Glob-Wildcards mehr (Warnungen entfernt)
 
-### 2026-05-06 (Basis)
-- **Bugfix:** `MySQL.query` → `MySQL.update` in `saveSkin` (`attempt to compare number with table`)
-- **Layout:** Menü ist kein Vollbild mehr – `height: 82vh; top: 50%; transform: translateY(-50%)`
-- **Timing:** Skin-Menü öffnet erst nach der Charakter-Erstellung
-- **Neu:** `Config.IdentityResource` – Auswahl zwischen `'zr-identity'`, `'esx_identity'` oder `''`
-- **Neu:** `zr_player_created()` Hook in `zr-identity/zr-config/zr-build-c.lua`
+### 2026-05-06 – esx_skin Kompatibilität & CSS
+- **Neu:** Drop-in-Ersatz für `esx_skin` – alle esx_skin NetEvents (`esx_skin:openSaveableMenu`, `esx_skin:openMenu`, `esx_skin:playerRegistered`, …) werden abgefangen
+- **Neu:** `ESX.RegisterServerCallback('esx_skin:getPlayerSkin')` und `RegisterNetEvent('esx_skin:save')` auf dem Server registriert
+- **Neu:** Schwarz/Weiß/Rot-Theme (CSS-Variablen: `--gold: #e63030`, `--bg-deep: #0a0a0a`)
+- **Neu:** Halbdurchsichtige Panels (`backdrop-filter: blur(8px)`) – Charakter im Hintergrund sichtbar
+- **Neu:** ASCII-Banner beim Serverstart
+- **Fix:** Kamera zeigt jetzt auf den Charakter (nicht mehr weg)
+
+### 2026-05-06 – Overhaul
+- **Bugfix:** Drag-&-Drop war komplett defekt wegen dupliziertem HTML in `index.html`
+- **Neu:** Linkes Panel als Körperzonen-Avatar (KOPF / OBERKÖRPER / HÄNDE / UNTERKÖRPER / SCHUHE)
+- **Neu:** Body-Zonen als großflächige Drop-Targets; falsche Zone = Schüttel-Animation
+- **Entfernt:** EUP-Integration entfernt (kein Bedarf)
+- **Neu:** `Config.LicenseKey` – hardcoded, kein Keymaster
+
+### 2026-05-06 – Basis
+- **Bugfix:** `MySQL.query` → `MySQL.update` in `saveSkin`
 - **Neu:** 3-Panel-Layout (links | Mitte transparent | rechts Garderobe)
 - **Neu:** `Config.CameraSideOffset` – zentriert den Charakter im transparenten Mittelbereich
+- **Neu:** `zr_player_created()` / `zr_custom_spawn_menu` Hooks in `zr-identity`
 
 ---
 
 ## Voraussetzungen
 
-| Abhängigkeit | Mindestversion |
+| Abhängigkeit | Hinweis |
 |---|---|
 | [ESX Framework](https://github.com/esx-framework/esx_core) | 1.9+ |
 | [oxmysql](https://github.com/overextended/oxmysql) | beliebig |
-| `zr-identity` **oder** `esx_identity` | – |
+| `zr-identity` oder `esx_identity` | optional, für Auto-Open nach Char-Erstellung |
+| ~~`esx_skin`~~ | **nicht nötig** – wird vollständig ersetzt |
 
 ---
 
@@ -47,144 +59,103 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
    ensure austriawien_skinmenu
    ```
 3. Die Datenbanktabelle wird **automatisch** beim Serverstart erstellt – kein SQL-Import nötig.
+4. `esx_skin` aus der `server.cfg` **entfernen** oder auskommentieren.
 
 ---
 
 ## Konfiguration (`config.lua`)
 
-### Lizenz ⚠️
 ```lua
-Config.LicenseKey = 'ABCD-1234-EFGH-5678'
+Config = {}
+Config.Debug          = true
+Config.Command        = 'awskin'
+Config.DatabaseTable  = 'austriawien_skins'
+Config.AdminGroups    = { 'admin', 'superadmin', 'god' }
+Config.FreezeOnOpen   = true
+Config.CameraFOV      = 45.0
+Config.CameraDistance = 2.2
+Config.CameraHeight   = 0.5
+Config.CameraSideOffset = -0.3
+Config.AutoLoadOnLogin  = true
+Config.FirstTimeSetup   = true
+Config.AllowedModels    = { 'mp_m_freemode_01', 'mp_f_freemode_01' }
+Config.ImageBasePath    = 'img'
+Config.ImageFormats     = { 'png', 'jpg', 'webp' }
+Config.LicenseKey       = 'AW-SKIN-2026-MIDCORE'
 ```
-Ohne gültigen Schlüssel stoppt die Resource beim Start automatisch.  
-Schlüssel auf [keymaster.fivem.net](https://keymaster.fivem.net) registrieren und hier eintragen.
-
-### Debug
-```lua
-Config.Debug = true   -- true = Logs in F8 + Server-Konsole | false = kein Output (Produktion)
-```
-
-### Befehl
-```lua
-Config.Command = 'awskin'
--- /awskin          → eigenes Skin-Menü öffnen
--- /awskin [id]     → Skin-Menü für anderen Spieler öffnen (nur Admins)
-```
-
-### Admin-Gruppen
-```lua
-Config.AdminGroups = { 'admin', 'superadmin', 'god' }
-```
-Nur Spieler in diesen Gruppen dürfen `/awskin [id]` auf andere Spieler anwenden.
-
-### Identity-Resource
-```lua
-Config.IdentityResource = 'zr-identity'
-```
-
-| Wert | Beschreibung |
-|---|---|
-| `'zr-identity'` | ZR Identity – Menü öffnet wenn `zr_custom_spawn_menu` aufgerufen wird |
-| `'esx_identity'` | Standard ESX Identity – Menü öffnet wenn `esx_identity:closeMenu` gefeuert wird |
-| `''` | Kein Warten – Menü öffnet direkt nach dem ersten Spawn |
 
 ### Kamera
-```lua
-Config.CameraFOV        = 45.0   -- Sichtfeld
-Config.CameraDistance   = 2.2    -- Abstand zum Charakter
-Config.CameraHeight     = 0.5    -- Höhenversatz (0 = Hüfte, 0.5 = Brust, 1.0 = Kopf)
-Config.CameraSideOffset = -0.3   -- Seitwärts-Versatz (negativ = Charakter nach rechts/Mitte)
-```
-> **Tipp:** `CameraSideOffset` je nach Monitor-Auflösung feintunen, damit der Charakter exakt im transparenten Mittelpanel landet.
+Die Kamera fokussiert automatisch auf die aktive Zone beim Slot-Wechsel:
 
-### Sonstiges
-```lua
-Config.FreezeOnOpen    = true    -- Charakter einfrieren wenn Menü offen
-Config.AutoLoadOnLogin = true    -- Skin automatisch beim Einloggen laden
-Config.FirstTimeSetup  = true    -- Skin-Menü beim ersten Login automatisch öffnen
-```
+| Zone | Kamera springt auf |
+|---|---|
+| `head` / `face` | Gesicht (hoch, enger FOV) |
+| `torso` / `hands` | Oberkörper (Standard) |
+| `legs` | Knie / Unterschenkel |
+| `shoes` | Füße / Schuhe |
+
+> **Tipp:** `CameraSideOffset` zwischen `-0.6` und `0.0` anpassen damit der Charakter exakt im transparenten Mittelpanel landet.
 
 ---
 
 ## Integration mit zr-identity
 
-Der primäre Hook ist in `zr-identity/zr-config/zr-build-c.lua` (client-seitig, zuverlässiger als Server→Client):
+### Client-Hook (`zr-identity/zr-config/zr-build-c.lua`)
 
 ```lua
 function zr_player_created()
     CreateThread(function()
-        Wait(1500)  -- Warten bis das Identity-NUI sich vollständig schließt
-        TriggerEvent('austriawien_skinmenu:charCreated')
+        Wait(1500)
+        TriggerEvent('esx_skin:playerRegistered')
     end)
 end
 ```
 
-`TriggerEvent` ist ein **lokaler** Client-Event – kein `RegisterNetEvent` nötig.  
-Die `Wait(1500)` verhindert, dass das Skin-Menü erscheint bevor das Identity-NUI weg ist.
+### Server-Hook (`zr-identity/zr-config/zr-build-s.lua`)
 
-> **Hinweis:** Der Server-Hook über `zr-build-s.lua` (`TriggerClientEvent`) erfordert `RegisterNetEvent` auf dem Client und ist daher weniger zuverlässig. Der Client-Hook ist die bevorzugte Lösung.
+```lua
+function zr_custom_spawn_menu(zr_source, zr_fdata)
+    TriggerClientEvent('esx_skin:openSaveableMenu', zr_source)
+end
+```
+
+Beide Hooks feuern `esx_skin`-Events – `austriawien_skinmenu` fängt diese ab, `esx_skin` selbst läuft nicht.
 
 ---
 
-## Integration mit esx_identity
+## Slots & Zonen
 
-`Config.IdentityResource = 'esx_identity'` setzen – keine weiteren Änderungen nötig.  
-Das Skin-Menü wartet automatisch auf den `esx_identity:closeMenu`-Event.
+| Slot-ID | Typ | GTA-Index | Zone |
+|---|---|---|---|
+| `hat` | prop | 0 | head |
+| `glasses` | prop | 1 | head |
+| `ear` | prop | 2 | head |
+| `hair` | component | 2 | head |
+| `mask` | component | 1 | face |
+| `jacket` | component | 11 | torso |
+| `undershirt` | component | 8 | torso |
+| `arms` | component | 3 | torso |
+| `armor` | component | 9 | torso |
+| `accessories` | component | 7 | torso |
+| `decal` | component | 10 | torso |
+| `bag` | component | 5 | torso |
+| `watch` | prop | 6 | hands |
+| `bracelet` | prop | 7 | hands |
+| `legs` | component | 4 | legs |
+| `shoes` | component | 6 | shoes |
 
 ---
 
 ## Vorschau-Bilder
 
-Eigene Kleidungsbilder werden aus `html/img/{slotId}/{drawableId}.{format}` geladen.
+Eigene Bilder unter `html/img/{slotId}/{drawableId}.{format}` ablegen:
 
-**Beispiel:**
 ```
-html/img/jacket/0.png     ← Jacke Drawable 0
-html/img/jacket/1.png     ← Jacke Drawable 1
-html/img/shoes/0.webp     ← Schuhe Drawable 0
+html/img/jacket/0.png
+html/img/shoes/0.webp
 ```
 
-**Unterstützte Slot-IDs:**
-`jacket`, `legs`, `shoes`, `hat`, `hair`, `mask`, `glasses`, `ear`,
-`undershirt`, `arms`, `armor`, `accessories`, `decal`, `bag`, `watch`, `bracelet`
-
-**Unterstützte Formate** (werden der Reihe nach versucht, erstes Treffer gewinnt):
-```lua
-Config.ImageFormats = { 'png', 'jpg', 'webp' }
-```
-
-Fehlt ein Bild, wird automatisch das Emoji-Icon als Fallback angezeigt.
-
-**Empfohlene Bildgröße:** 72×72 px oder 128×128 px
-
----
-
-## EUP-Bilder aus externen Resources
-
-Wenn EUP-Packs als separate FiveM-Resources vorhanden sind, kann das Skin-Menü deren Vorschaubilder automatisch einbinden.
-
-**1. `config.lua` anpassen:**
-```lua
-Config.EUPResources = { 'eup-stream', 'eup-sp' }
-```
-
-**2. EUP-Resource: Bilder unter `img/` ablegen:**
-```
-eup-stream/img/jacket/0.png
-eup-stream/img/jacket/1.png
-eup-stream/img/legs/0.png
-```
-
-**3. `fxmanifest.lua` der EUP-Resource: Bilder als Files registrieren:**
-```lua
-files {
-    'img/**/*.png',
-    'img/**/*.jpg',
-    'img/**/*.webp'
-}
-```
-
-Der Server scannt beim Start alle angegebenen Resources automatisch und baut ein Manifest. Der Browser lädt Bilder dann per `cfx-nui-{resource}/img/{slot}/{id}.png`. Lokale Bilder in `html/img/` haben immer Vorrang.
+Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanifest.lua` eingetragen werden solange der Ordner nicht existiert.
 
 ---
 
@@ -212,12 +183,11 @@ Der Server scannt beim Start alle angegebenen Resources automatisch und baut ein
 ```
 
 **Bedienung:**
-- Item aus der Garderobe (rechts) **auf eine Körperzone** (links) ziehen → Kleidung wird angelegt
-- Item auf eine **falsche Zone** fallen lassen → Schüttel-Animation als Feedback
-- Klick auf einen Slot → Garderobe springt zur passenden Kategorie
-- Kamera-Buttons (unten links) drehen den Charakter in Echtzeit
-- **SPEICHERN** → Skin wird in der Datenbank gespeichert
-- **ABBRECHEN** → Alle Änderungen werden rückgängig gemacht
+- Item aus der Garderobe (rechts) auf eine Körperzone (links) ziehen → Kleidung wird angelegt
+- Klick auf einen Slot → Garderobe springt zur Kategorie, Kamera zoomt automatisch auf die Zone
+- Kamera-Buttons drehen den Charakter in Echtzeit
+- **SPEICHERN** → Skin in Datenbank speichern
+- **ABBRECHEN** → Alle Änderungen rückgängig
 
 ---
 
@@ -226,7 +196,7 @@ Der Server scannt beim Start alle angegebenen Resources automatisch und baut ein
 | Befehl | Beschreibung |
 |---|---|
 | `/awskin` | Eigenes Skin-Menü öffnen |
-| `/awskin 42` | Skin-Menü von Spieler mit Server-ID 42 öffnen (nur Admins) |
+| `/awskin 42` | Skin-Menü von Spieler-ID 42 öffnen (nur Admins) |
 
 ---
 
@@ -241,15 +211,6 @@ CREATE TABLE IF NOT EXISTS `austriawien_skins` (
     `updated_at` TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`identifier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-```
-
----
-
-## Exports (für andere Resources)
-
-```lua
--- Skin eines Spielers als Lua-Table abrufen (Server-seitig)
-local skin = exports['austriawien_skinmenu']:getSkin(identifier)
 ```
 
 ---
@@ -274,70 +235,29 @@ austriawien_skinmenu/
         ├── jacket/        ← Vorschau-Bilder hier ablegen
         ├── legs/
         ├── shoes/
-        └── ...            ← (16 Slot-Ordner gesamt)
+        └── ...
 ```
 
 ---
 
 ## Bekannte Fehler & Lösungen
 
-### `attempt to compare number with table` (server.lua:84)
-**Ursache:** `MySQL.query` gibt bei INSERT/UPDATE ein Tabellen-Objekt zurück, kein Plain-Number.  
-**Lösung:** Bereits behoben – `saveSkin` verwendet jetzt `MySQL.update(...)` statt `MySQL.query(...)`.
-
----
-
 ### Skin-Menü erscheint während der Charakter-Erstellung
-**Ursache 1:** `Config.IdentityResource` nicht oder falsch gesetzt.  
-**Ursache 2 (zr-identity):** `TriggerClientEvent` vom Server braucht `RegisterNetEvent` auf dem Client – ohne das wird der Event ignoriert.  
-**Lösung:** `zr_player_created()` in `zr-identity/zr-config/zr-build-c.lua` überschreiben:
-```lua
-function zr_player_created()
-    CreateThread(function()
-        Wait(1500)
-        TriggerEvent('austriawien_skinmenu:charCreated')
-    end)
-end
-```
-
----
-
-### Resource startet nicht / stoppt sofort
-**Ursache:** `Config.LicenseKey` ist leer.  
-**Lösung:** Schlüssel auf keymaster.fivem.net registrieren und in `config.lua` eintragen:
-```lua
-Config.LicenseKey = 'DEIN-SCHLUESSEL-HIER'
-```
-
----
-
-### Drag-&-Drop funktioniert nicht
-**Ursache:** Item auf einen falschen Zonen-Typ fallen gelassen (z.B. Schuh-Item auf KOPF-Zone).  
-**Erkennung:** Die Zone zeigt eine Schüttel-Animation wenn der Typ nicht passt.  
-**Lösung:** Item auf die passende Körperzone fallen lassen (Hose → UNTERKÖRPER, Jacke → OBERKÖRPER usw.)
-
----
-
-### EUP-Bilder werden nicht angezeigt
-**Ursache 1:** `Config.EUPResources` ist leer oder Resource-Name falsch.  
-**Ursache 2:** Die EUP-Resource hat keine `files`-Einträge im `fxmanifest.lua`.  
-**Lösung:** Im `fxmanifest.lua` der EUP-Resource eintragen:
-```lua
-files { 'img/**/*.png', 'img/**/*.jpg', 'img/**/*.webp' }
-```
-
----
-
-### Charakter steht nicht in der Mitte des transparenten Bereichs
-**Ursache:** `CameraSideOffset` muss je nach Auflösung angepasst werden.  
-**Lösung:** In `config.lua` den Wert schrittweise ändern:
-```lua
-Config.CameraSideOffset = -0.3   -- Standardwert, bei Bedarf zwischen -0.6 und 0.0 testen
-```
-
----
+**Ursache:** `zr_player_created()` oder `zr_custom_spawn_menu` Hook fehlt.  
+**Lösung:** Hooks wie oben unter *Integration mit zr-identity* eintragen.
 
 ### Skin wird nach Reconnect nicht geladen
-**Ursache:** `esx:onPlayerSpawn` wird unter Umständen vor `esx:playerLoaded` gefeuert.  
-**Lösung:** Bereits behoben – `skinLoaded`-Flag verhindert Doppel-Load. Bei Reconnect wird das Flag in `esx:playerLoaded` zurückgesetzt.
+**Ursache:** Race-Condition zwischen `esx:onPlayerSpawn` und `esx:playerLoaded`.  
+**Lösung:** Bereits behoben – `skinLoaded`-Flag verhindert Doppel-Load.
+
+### Kamera zeigt nicht auf die Schuhe
+**Ursache:** Kamera-Zone-Werte passen nicht zur Charakter-Größe.  
+**Lösung:** `ZONE_CAM` in `client.lua` anpassen – `shoes` hat `height = 0.10, lookAt = -0.05`.
+
+### Charakter steht nicht in der Mitte
+**Ursache:** `CameraSideOffset` muss je nach Auflösung angepasst werden.  
+**Lösung:**
+```lua
+Config.CameraSideOffset = -0.3   -- zwischen -0.6 und 0.0 testen
+```
 
