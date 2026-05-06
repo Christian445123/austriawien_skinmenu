@@ -324,29 +324,30 @@ RegisterNUICallback('getTextureCount', function(data, cb)
 end)
 
 -- Kamera-Fokus pro Zone anpassen
--- pos.z in GTA V = Fußhöhe des Peds (Boden). Charakter ≈ 1.8m groß.
+-- Werte direkt aus skinchanger/config.lua (camOffset / zoomOffset)
 local ZONE_CAM = {
-    head   = { height = 1.65, lookAt = 1.60, fov = 35.0 },  -- Kopfhöhe
-    face   = { height = 1.65, lookAt = 1.60, fov = 30.0 },  -- Gesicht, enger
-    torso  = { height = 0.50, lookAt = 0.50, fov = 45.0 },  -- Brust (= Default)
-    hands  = { height = 0.70, lookAt = 0.65, fov = 42.0 },  -- Handgelenke
-    legs   = { height = 0.30, lookAt = 0.05, fov = 40.0 },  -- Unterschenkel → Knie
-    shoes  = { height = 0.10, lookAt = -0.05, fov = 38.0 }, -- Schuhe (ganz unten)
+    head   = { height = 0.65, lookAt = 0.65, dist = 0.6  },
+    face   = { height = 0.65, lookAt = 0.65, dist = 0.6  },
+    torso  = { height = 0.15, lookAt = 0.15, dist = 0.75 },
+    hands  = { height = 0.15, lookAt = 0.15, dist = 0.75 },
+    legs   = { height = -0.5, lookAt = -0.5, dist = 0.8  },
+    shoes  = { height = -0.8, lookAt = -0.8, dist = 0.8  },
 }
 
 local function setCameraZone(zone)
     if not cam or not DoesCamExist(cam) then return end
-    local cfg         = ZONE_CAM[zone] or ZONE_CAM['torso']
-    local ped         = PlayerPedId()
-    local pos         = GetEntityCoords(ped)
-    local sideOffset  = Config.CameraSideOffset or -0.3
-    local sinA        = math.sin(math.rad(camAngle))
-    local cosA        = math.cos(math.rad(camAngle))
-    local x           = pos.x + Config.CameraDistance * sinA + sideOffset * cosA
-    local y           = pos.y + Config.CameraDistance * cosA - sideOffset * sinA
+    local cfg        = ZONE_CAM[zone] or ZONE_CAM['torso']
+    local ped        = PlayerPedId()
+    local pos        = GetEntityCoords(ped)
+    local dist       = cfg.dist
+    local sideOffset = Config.CameraSideOffset or -0.3
+    local sinA       = math.sin(math.rad(camAngle))
+    local cosA       = math.cos(math.rad(camAngle))
+    local x          = pos.x + dist * sinA + sideOffset * cosA
+    local y          = pos.y + dist * cosA - sideOffset * sinA
     SetCamCoord(cam, x, y, pos.z + cfg.height)
     PointCamAtCoord(cam, pos.x, pos.y, pos.z + cfg.lookAt)
-    SetCamFov(cam, cfg.fov)
+    SetCamFov(cam, Config.CameraFOV)
 end
 
 RegisterNUICallback('focusZone', function(data, cb)
