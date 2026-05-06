@@ -17,11 +17,6 @@ local VALID_LICENSE_KEY = 'AW-SKIN-2026-MIDCORE'
 AddEventHandler('onResourceStart', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
 
-    if not Config.CheckLicense then
-        print('^2[AWskin] Resource gestartet. ^3(Lizenz-Pruefung deaktiviert)^7')
-        return
-    end
-
     local key = Config.LicenseKey or ''
     if key ~= VALID_LICENSE_KEY then
         print('^1')
