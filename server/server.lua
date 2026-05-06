@@ -45,13 +45,6 @@ AddEventHandler('onResourceStart', function(resourceName)
     print('^2[AWskin] Lizenz OK. Resource gestartet.^7')
 end)
 
-
-            Wait(5000)
-            StopResource(GetCurrentResourceName())
-        end
-    end, 'GET', '', { ['Content-Type'] = 'application/json' })
-end)
-
 -- ─── EUP-Bild-Scanner ────────────────────────────────────────────────────────
 local eupManifest = {}
 
