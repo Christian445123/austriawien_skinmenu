@@ -195,6 +195,10 @@ ESX.RegisterServerCallback('austriawien_skinmenu:canOpenMenu', function(source, 
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then cb(false) return end
 
+    -- Gruppe im Server-Log ausgeben (hilft bei Diagnose)
+    local grp = xPlayer.getGroup and xPlayer.getGroup() or xPlayer.group or 'unbekannt'
+    print(string.format('^3[AWskin] canOpenMenu | Spieler %d | Gruppe: "%s"^7', source, tostring(grp)))
+
     -- Admins dürfen immer
     if isAdmin(xPlayer) then cb(true) return end
 

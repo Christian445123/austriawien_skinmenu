@@ -2,9 +2,14 @@ fx_version 'cerulean'
 game 'gta5'
 
 name        'austriawien_skinmenu'
-description 'AustriaWien – Drag & Drop Skin-Menü für ESX'
+description 'AustriaWien – Skin-Menü für ESX'
 version     '1.0.4'
 author      'GamingDevelopment'
+
+dependencies {
+    'es_extended',
+    'oxmysql',
+}
 
 shared_scripts {
     'config.lua'

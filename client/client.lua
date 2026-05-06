@@ -413,6 +413,10 @@ end)
 
 -- ─── Slash-Befehl (/awskin oder /awskin [serverID]) ────────────────────────
 RegisterCommand(Config.Command, function(source, args)
+    if ESX == nil then
+        TriggerEvent('chat:addMessage', { color = {231,76,60}, args = { '[Garderobe]', 'Bitte warte kurz, ESX lädt noch...' } })
+        return
+    end
     if args[1] then
         -- /awskin [id] → Admin-Aktion, Prüfung läuft serverseitig
         local targetId = tonumber(args[1])
