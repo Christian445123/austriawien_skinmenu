@@ -408,8 +408,33 @@ AddEventHandler('austriawien_skinmenu:eupManifest', function(manifest)
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
-local skinLoaded   = false  -- verhindert Doppel-Load innerhalb einer Session
-local isFirstLogin = false  -- wird vom Server gesetzt wenn kein Skin in DB
+local skinLoaded      = false  -- verhindert Doppel-Load innerhalb einer Session
+local isFirstLogin    = false  -- wird vom Server gesetzt wenn kein Skin in DB
+
+-- Zwei-Flag-System für zr-identity: charCreated kann BEFORE oder AFTER applySkin ankommen.
+-- Menü öffnet sobald BEIDE Flags gesetzt sind.
+local zrCharCreated   = false  -- gesetzt wenn charCreated Event empfangen
+local zrPendingMenu   = false  -- gesetzt wenn applySkin(firstLogin=true) für zr-identity empfangen
+local zrMenuOpened    = false  -- verhindert doppeltes Öffnen
+
+local function zrTryOpen()
+    if zrCharCreated and zrPendingMenu and not zrMenuOpened then
+        zrMenuOpened = true
+        dbg('zrTryOpen: beide Flags gesetzt → öffne Skin-Menü')
+        CreateThread(function()
+            Wait(400)
+            openSkinMenu()
+        end)
+    end
+end
+
+-- RegisterNetEvent damit der Handler auch auf Server→Client TriggerClientEvent reagiert
+RegisterNetEvent('austriawien_skinmenu:charCreated')
+AddEventHandler('austriawien_skinmenu:charCreated', function()
+    dbg('charCreated empfangen | zrPendingMenu=%s', tostring(zrPendingMenu))
+    zrCharCreated = true
+    zrTryOpen()
+end)
 
 RegisterNetEvent('austriawien_skinmenu:applySkin')
 AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
@@ -449,27 +474,19 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
                 end)
 
             elseif ir == 'zr-identity' then
-                -- ── zr-identity: Server triggert austriawien_skinmenu:charCreated ─
-                -- (siehe zr-config/zr-build-s.lua → zr_custom_spawn_menu)
-                dbg('Warte auf austriawien_skinmenu:charCreated (zr-identity) ...')
-                local opened = false
-                local handler
-                handler = AddEventHandler('austriawien_skinmenu:charCreated', function()
-                    if not opened then
-                        opened = true
-                        RemoveEventHandler(handler)
-                        dbg('austriawien_skinmenu:charCreated empfangen → öffne Skin-Menü')
-                        Wait(400)
-                        openSkinMenu()
-                    end
-                end)
+                -- ── zr-identity: charCreated Handler ist bereits auf Modul-Ebene ──
+                -- Hier nur das Flag setzen; der Handler oben ruft zrTryOpen() auf.
+                dbg('zr-identity: setze zrPendingMenu=true')
+                zrCharCreated = false  -- Reset für diesen Login-Zyklus
+                zrMenuOpened  = false
+                zrPendingMenu = true
+                zrTryOpen()  -- falls charCreated schon vorher ankam
                 -- Fallback nach 10 Min
                 CreateThread(function()
                     local deadline = GetGameTimer() + 600000
-                    while not opened and GetGameTimer() < deadline do Wait(2000) end
-                    if not opened then
-                        opened = true
-                        pcall(function() RemoveEventHandler(handler) end)
+                    while not zrMenuOpened and GetGameTimer() < deadline do Wait(2000) end
+                    if not zrMenuOpened then
+                        zrMenuOpened = true
                         dbg('Fallback: charCreated nie empfangen – öffne trotzdem')
                         openSkinMenu()
                     end
@@ -516,8 +533,11 @@ AddEventHandler('esx:onPlayerSpawn', function()
     end
 end)
 
--- Beim erneuten Joinen (Reconnect) Flag zurücksetzen
+-- Beim erneuten Joinen (Reconnect) alle Flags zurücksetzen
 AddEventHandler('esx:playerLoaded', function()
-    dbg('esx:playerLoaded – setze skinLoaded zurück')
-    skinLoaded = false
+    dbg('esx:playerLoaded – setze Flags zurück')
+    skinLoaded    = false
+    zrCharCreated = false
+    zrPendingMenu = false
+    zrMenuOpened  = false
 end)
