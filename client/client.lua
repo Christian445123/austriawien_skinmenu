@@ -179,8 +179,8 @@ local function createCamera()
     local cosA = math.cos(math.rad(camAngle))
 
     cam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
-    local x = pos.x + Config.CameraDistance * -sinA + sideOffset * cosA
-    local y = pos.y + Config.CameraDistance * -cosA - sideOffset * sinA
+    local x = pos.x + Config.CameraDistance * sinA + sideOffset * cosA
+    local y = pos.y + Config.CameraDistance * cosA - sideOffset * sinA
     SetCamCoord(cam, x, y, pos.z + Config.CameraHeight)
     PointCamAtCoord(cam, pos.x, pos.y, pos.z + 0.5)
     SetCamFov(cam, Config.CameraFOV)
@@ -192,8 +192,8 @@ local function updateCameraPos()
     if not cam or not DoesCamExist(cam) then return end
     local ped = PlayerPedId()
     local pos = GetEntityCoords(ped)
-    local x = pos.x + Config.CameraDistance * -math.sin(math.rad(camAngle))
-    local y = pos.y + Config.CameraDistance * -math.cos(math.rad(camAngle))
+    local x = pos.x + Config.CameraDistance * math.sin(math.rad(camAngle))
+    local y = pos.y + Config.CameraDistance * math.cos(math.rad(camAngle))
     SetCamCoord(cam, x, y, pos.z + Config.CameraHeight)
     PointCamAtCoord(cam, pos.x, pos.y, pos.z + 0.5)
 end
