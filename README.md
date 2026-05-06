@@ -1,6 +1,6 @@
 # austriawien_skinmenu
 
-Drag-&-Drop Skin-Menü für FiveM mit ESX-Framework.  
+Skin-Menü für FiveM mit ESX-Framework.  
 Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 **Drop-in-Ersatz für `esx_skin`** – alle `esx_skin`-Events werden von dieser Resource abgefangen, `esx_skin` muss **nicht** laufen.
@@ -9,33 +9,31 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 ## Changelog
 
-### 2026-05-06 – Kamera & Banner
-- **Neu:** Kamera-Fokus per Zone – Kamera springt automatisch zu Kopf / Oberkörper / Hände / Beine / Schuhe wenn der entsprechende Slot ausgewählt wird
-- **Neu:** `shoes`-Slot hat eigene Zone (`shoes`) mit noch tieferer Kameraposition als `legs`
-- **Neu:** Startbanner in Schwarz/Weiß/Rot (Zeilen 1–3 + 7–8 Rot, Zeilen 4–6 Weiß)
-- **Entfernt:** Versionscheck via HTTP (`PerformHttpRequest`) – Banner erscheint jetzt sofort beim `onResourceStart`
-- **Fix:** `fxmanifest.lua` enthält keine `html/img/**/*.png`-Glob-Wildcards mehr (Warnungen entfernt)
+### 2026-05-06 – v1.0.4
+- **Neu:** `/awskin` nur noch für Admins (`admin`-Gruppe) – Ausnahme: erstes Mal (kein Skin in DB) darf jeder Spieler öffnen
+- **Neu:** Server-Callback `austriawien_skinmenu:canOpenMenu` prüft Berechtigung serverseitig (nicht manipulierbar)
+- **Fix:** Kamera startet immer von vorne – GTA Heading-Vorzeichen korrigiert (`-GetEntityHeading`)
+- **Fix:** Alle Equip-Slots zeigen vollständigen Inhalt (kein `overflow:hidden` auf Body-Zonen mehr)
+- **Fix:** Slot-IDs in `index.html` korrigiert (vorher Emojis als IDs → Klick auf Slots funktioniert jetzt)
+- **Entfernt:** Drag & Drop komplett entfernt – Klick auf Item-Karte legt Kleidung sofort an
+- **CSS:** Equip-Slot Breite 58 → 66 px, Label mit `text-overflow: ellipsis`, `equipped`-Rahmen Rot statt Grün
 
-### 2026-05-06 – esx_skin Kompatibilität & CSS
-- **Neu:** Drop-in-Ersatz für `esx_skin` – alle esx_skin NetEvents (`esx_skin:openSaveableMenu`, `esx_skin:openMenu`, `esx_skin:playerRegistered`, …) werden abgefangen
-- **Neu:** `ESX.RegisterServerCallback('esx_skin:getPlayerSkin')` und `RegisterNetEvent('esx_skin:save')` auf dem Server registriert
-- **Neu:** Schwarz/Weiß/Rot-Theme (CSS-Variablen: `--gold: #e63030`, `--bg-deep: #0a0a0a`)
-- **Neu:** Halbdurchsichtige Panels (`backdrop-filter: blur(8px)`) – Charakter im Hintergrund sichtbar
+### 2026-05-06 – v1.0.3
+- **Neu:** Kamera-Fokus per Zone – Kamera springt automatisch zu Kopf / Oberkörper / Hände / Beine / Schuhe
+- **Neu:** `shoes`-Slot hat eigene Zone mit tieferer Kameraposition als `legs`
+- **Neu:** Startbanner in Schwarz/Weiß/Rot
+- **Entfernt:** Versionscheck via HTTP
+- **Fix:** `fxmanifest.lua` ohne `img`-Glob-Wildcards (keine Warnungen mehr)
+
+### 2026-05-06 – v1.0.2
+- **Neu:** Drop-in-Ersatz für `esx_skin` – alle esx_skin NetEvents werden abgefangen
+- **Neu:** Schwarz/Weiß/Rot-Theme, halbdurchsichtige Panels
 - **Neu:** ASCII-Banner beim Serverstart
-- **Fix:** Kamera zeigt jetzt auf den Charakter (nicht mehr weg)
 
-### 2026-05-06 – Overhaul
-- **Bugfix:** Drag-&-Drop war komplett defekt wegen dupliziertem HTML in `index.html`
-- **Neu:** Linkes Panel als Körperzonen-Avatar (KOPF / OBERKÖRPER / HÄNDE / UNTERKÖRPER / SCHUHE)
-- **Neu:** Body-Zonen als großflächige Drop-Targets; falsche Zone = Schüttel-Animation
-- **Entfernt:** EUP-Integration entfernt (kein Bedarf)
-- **Neu:** `Config.LicenseKey` – hardcoded, kein Keymaster
-
-### 2026-05-06 – Basis
-- **Bugfix:** `MySQL.query` → `MySQL.update` in `saveSkin`
+### 2026-05-06 – v1.0.1
 - **Neu:** 3-Panel-Layout (links | Mitte transparent | rechts Garderobe)
-- **Neu:** `Config.CameraSideOffset` – zentriert den Charakter im transparenten Mittelbereich
-- **Neu:** `zr_player_created()` / `zr_custom_spawn_menu` Hooks in `zr-identity`
+- **Neu:** `Config.CameraSideOffset`, `zr_player_created()` Hook
+- **Fix:** `MySQL.query` → `MySQL.update` in `saveSkin`
 
 ---
 
@@ -67,34 +65,40 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 ```lua
 Config = {}
-Config.Debug          = true
+Config.Debug          = false
 Config.Command        = 'awskin'
 Config.DatabaseTable  = 'austriawien_skins'
-Config.AdminGroups    = { 'admin', 'superadmin', 'god' }
+Config.AdminGroups    = { 'admin' }   -- darf /awskin jederzeit öffnen
 Config.FreezeOnOpen   = true
 Config.CameraFOV      = 45.0
 Config.CameraDistance = 2.2
 Config.CameraHeight   = 0.5
 Config.CameraSideOffset = -0.3
 Config.AutoLoadOnLogin  = true
-Config.FirstTimeSetup   = true
 Config.AllowedModels    = { 'mp_m_freemode_01', 'mp_f_freemode_01' }
-Config.ImageBasePath    = 'img'
-Config.ImageFormats     = { 'png', 'jpg', 'webp' }
 Config.LicenseKey       = 'AW-SKIN-2026-MIDCORE'
 ```
 
+### Berechtigungen `/awskin`
+
+| Wer tippt `/awskin` | Ergebnis |
+|---|---|
+| Spieler **ohne** Skin in DB (erstes Mal) | Menü öffnet sich |
+| Normaler Spieler mit bestehendem Skin | Zugriff verweigert |
+| Spieler in `Config.AdminGroups` | Menü öffnet immer |
+| Admin `/awskin [id]` | Öffnet Menü für Ziel-Spieler |
+
 ### Kamera
-Die Kamera fokussiert automatisch auf die aktive Zone beim Slot-Wechsel:
+Die Kamera fokussiert automatisch auf die aktive Zone beim Slot-Wechsel und startet **immer von vorne**:
 
 | Zone | Kamera springt auf |
 |---|---|
-| `head` / `face` | Gesicht (hoch, enger FOV) |
-| `torso` / `hands` | Oberkörper (Standard) |
+| `head` / `face` | Gesicht |
+| `torso` / `hands` | Oberkörper |
 | `legs` | Knie / Unterschenkel |
 | `shoes` | Füße / Schuhe |
 
-> **Tipp:** `CameraSideOffset` zwischen `-0.6` und `0.0` anpassen damit der Charakter exakt im transparenten Mittelpanel landet.
+> **Tipp:** `CameraSideOffset` zwischen `-0.6` und `0.0` anpassen damit der Charakter im transparenten Mittelpanel zentriert ist.
 
 ---
 
@@ -155,7 +159,7 @@ html/img/jacket/0.png
 html/img/shoes/0.webp
 ```
 
-Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanifest.lua` eingetragen werden solange der Ordner nicht existiert.
+Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanifest.lua` eingetragen werden.
 
 ---
 
@@ -166,12 +170,15 @@ Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanif
 │  CHARAKTER      │                          │  GARDEROBE      │
 │  ┌─ KOPF ─────┐ │   Transparent –          │                 │
 │  │ Hut Haare  │ │   Charakter live         │  Kategorie-Tabs │
-│  │ Brille …   │ │   sichtbar (3D)          │  Item-Karten    │
-│  ├─ OBERKÖRPER┤ │                          │  Textur-Slider  │
-│  │ Jacke Hemd │ │                          │  Gesicht-Editor │
-│  │ Arme Weste │ │                          │                 │
-│  ├─ HÄNDE ────┤ │                          │  [ABBRECHEN]    │
-│  │ Uhr Armbd. │ │                          │  [SPEICHERN]    │
+│  │ Brille Ohr │ │   sichtbar (3D)          │  Item-Karten    │
+│  │ Maske      │ │                          │  Textur-Slider  │
+│  ├─ OBERKÖRPER┤ │                          │  Gesicht-Editor │
+│  │ Jacke Hemd │ │                          │                 │
+│  │ Arme Weste │ │                          │  [ABBRECHEN]    │
+│  │ Acc. Tasche│ │                          │  [SPEICHERN]    │
+│  │ Abzeichen  │ │                          │                 │
+│  ├─ HÄNDE ────┤ │                          │                 │
+│  │ Uhr Armbd. │ │                          │                 │
 │  ├─ UNTERKÖRP.┤ │                          │                 │
 │  │ Hose       │ │                          │                 │
 │  ├─ SCHUHE ───┤ │                          │                 │
@@ -179,14 +186,14 @@ Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanif
 │  └────────────┘ │                          │                 │
 │  [◄ DREHEN ►]   │                          │                 │
 └─────────────────┴──────────────────────────┴─────────────────┘
-       280 px              transparent               360 px
+       280 px              transparent               370 px
 ```
 
 **Bedienung:**
-- Item aus der Garderobe (rechts) auf eine Körperzone (links) ziehen → Kleidung wird angelegt
-- Klick auf einen Slot → Garderobe springt zur Kategorie, Kamera zoomt automatisch auf die Zone
+- Klick auf Item-Karte (rechts) → Kleidung wird sofort angelegt
+- Klick auf einen Equip-Slot (links) → Garderobe springt zur Kategorie, Kamera zoomt auf die Zone
 - Kamera-Buttons drehen den Charakter in Echtzeit
-- **SPEICHERN** → Skin in Datenbank speichern
+- **SPEICHERN** → Skin in Datenbank schreiben
 - **ABBRECHEN** → Alle Änderungen rückgängig
 
 ---
@@ -195,7 +202,7 @@ Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanif
 
 | Befehl | Beschreibung |
 |---|---|
-| `/awskin` | Eigenes Skin-Menü öffnen |
+| `/awskin` | Eigenes Skin-Menü öffnen (Admin oder erstes Mal) |
 | `/awskin 42` | Skin-Menü von Spieler-ID 42 öffnen (nur Admins) |
 
 ---
