@@ -407,18 +407,76 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     dbg('applySkin empfangen | firstLogin=%s | json-länge=%d', tostring(firstLogin), skinJson and #skinJson or 0)
 
     if firstLogin then
-        -- Erstes Login: Menü öffnen, sobald der Ped wirklich bereit ist
+        -- Erstes Login: Menü erst öffnen wenn Charakter-Erstellung abgeschlossen
         if Config.FirstTimeSetup then
-            dbg('Erster Login erkannt – warte auf Ped...')
-            CreateThread(function()
-                local deadline = GetGameTimer() + 10000
-                repeat
-                    Wait(200)
-                until (IsScreenFadedIn() and not IsEntityDead(PlayerPedId())) or GetGameTimer() > deadline
-                dbg('Ped bereit – öffne Skin-Menü (First-Time-Setup)')
-                Wait(500)
-                openSkinMenu()
-            end)
+            dbg('Erster Login erkannt | IdentityResource=%s', tostring(Config.IdentityResource))
+
+            local ir = Config.IdentityResource or ''
+
+            if ir == 'esx_identity' then
+                -- ── esx_identity: warte auf Client-seitigen closeMenu Event ──────
+                dbg('Warte auf esx_identity:closeMenu ...')
+                local opened = false
+                local handler
+                handler = AddEventHandler('esx_identity:closeMenu', function()
+                    if not opened then
+                        opened = true
+                        RemoveEventHandler(handler)
+                        dbg('esx_identity:closeMenu empfangen → öffne Skin-Menü')
+                        Wait(400)
+                        openSkinMenu()
+                    end
+                end)
+                -- Fallback nach 10 Min
+                CreateThread(function()
+                    local deadline = GetGameTimer() + 600000
+                    while not opened and GetGameTimer() < deadline do Wait(2000) end
+                    if not opened then
+                        opened = true
+                        pcall(function() RemoveEventHandler(handler) end)
+                        dbg('Fallback: esx_identity:closeMenu nie empfangen – öffne trotzdem')
+                        openSkinMenu()
+                    end
+                end)
+
+            elseif ir == 'zr-identity' then
+                -- ── zr-identity: Server triggert austriawien_skinmenu:charCreated ─
+                -- (siehe zr-config/zr-build-s.lua → zr_custom_spawn_menu)
+                dbg('Warte auf austriawien_skinmenu:charCreated (zr-identity) ...')
+                local opened = false
+                local handler
+                handler = AddEventHandler('austriawien_skinmenu:charCreated', function()
+                    if not opened then
+                        opened = true
+                        RemoveEventHandler(handler)
+                        dbg('austriawien_skinmenu:charCreated empfangen → öffne Skin-Menü')
+                        Wait(400)
+                        openSkinMenu()
+                    end
+                end)
+                -- Fallback nach 10 Min
+                CreateThread(function()
+                    local deadline = GetGameTimer() + 600000
+                    while not opened and GetGameTimer() < deadline do Wait(2000) end
+                    if not opened then
+                        opened = true
+                        pcall(function() RemoveEventHandler(handler) end)
+                        dbg('Fallback: charCreated nie empfangen – öffne trotzdem')
+                        openSkinMenu()
+                    end
+                end)
+
+            else
+                -- ── Kein Identity-Resource → direkt nach Spawn öffnen ─────────────
+                CreateThread(function()
+                    local deadline = GetGameTimer() + 10000
+                    repeat Wait(200)
+                    until (IsScreenFadedIn() and not IsEntityDead(PlayerPedId())) or GetGameTimer() > deadline
+                    dbg('Ped bereit – öffne Skin-Menü (kein Identity-Resource)')
+                    Wait(500)
+                    openSkinMenu()
+                end)
+            end
         end
         return
     end

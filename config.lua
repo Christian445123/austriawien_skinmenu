@@ -34,6 +34,19 @@ Config.AutoLoadOnLogin = true
 -- ─── Erstes Login → Menü automatisch öffnen ───────────────────────────────────
 Config.FirstTimeSetup = true
 
+-- ─── Identity-Resource ──────────────────────────────────────────────────────
+-- Wähle welche Charakter-Erstellungs-Resource du verwendest.
+-- Das Skin-Menü öffnet sich erst NACHDEM der Charakter erstellt wurde.
+--
+--   'esx_identity'  → Standard ESX Identity
+--                     Wartet auf den Client-Event 'esx_identity:closeMenu'
+--
+--   'zr-identity'   → ZR Identity (zr-identity Resource)
+--                     Wird über zr_custom_spawn_menu (Server→Client) getriggert
+--
+--   ''              → Kein Event – Menü öffnet direkt nach dem Spawn
+Config.IdentityResource = 'zr-identity'
+
 -- ─── Erlaubte Models ──────────────────────────────────────────────────────────
 Config.AllowedModels = {
     'mp_m_freemode_01',

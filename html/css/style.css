@@ -41,22 +41,26 @@ html, body {
     position: fixed;
     inset: 0;
     display: flex;
-    align-items: stretch;
-    /* Kein Hintergrund → Charakter in der Mitte komplett sichtbar */
+    align-items: center;          /* Panel-Box vertikal zentrieren */
+    justify-content: stretch;
+    padding: 5vh 0;               /* Luft oben/unten – kein Vollbild mehr */
     animation: fadeIn .25s ease;
-    pointer-events: none; /* Panels setzen pointer-events: all selbst */
+    pointer-events: none;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ─── Linkes Panel ───────────────────────────────────────────────────────── */
 .panel-left {
     width: 280px;
+    height: 82vh;
+    max-height: 740px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     background: rgba(13, 13, 20, 0.92);
     backdrop-filter: blur(10px);
     border-right: 1px solid var(--border);
+    border-radius: 10px 0 0 10px;
     box-shadow: 4px 0 24px rgba(0,0,0,.6);
     pointer-events: all;
     overflow: hidden;
@@ -129,12 +133,13 @@ html, body {
 /* ─── Mittleres Panel – Transparent ─────────────────────────────────────── */
 .panel-center {
     flex: 1;
+    height: 82vh;
+    max-height: 740px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 16px 20px;
     pointer-events: none; /* Click-Through damit man den Charakter sieht */
-    /* Subtile Vignette an den Rändern zur Orientierung */
     background:
         linear-gradient(to right,  rgba(13,13,20,.45) 0%, transparent 18%),
         linear-gradient(to left,   rgba(13,13,20,.45) 0%, transparent 18%),
@@ -275,12 +280,15 @@ html, body {
 /* ─── Rechtes Panel – Garderobe ──────────────────────────────────────────── */
 .panel-right {
     width: 360px;
+    height: 82vh;
+    max-height: 740px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     background: rgba(13, 13, 20, 0.92);
     backdrop-filter: blur(10px);
     border-left: 1px solid var(--border);
+    border-radius: 0 10px 10px 0;
     box-shadow: -4px 0 24px rgba(0,0,0,.6);
     pointer-events: all;
     overflow: hidden;
