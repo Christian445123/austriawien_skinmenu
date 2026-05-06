@@ -126,7 +126,6 @@ html, body {
     border-radius: var(--radius);
     background: rgba(20,20,20,.6);
     transition: var(--trans);
-    overflow: hidden;
 }
 .body-zone:hover { border-color: rgba(230,48,48,.5); background: rgba(25,25,25,.9); }
 .body-zone.reject { animation: zoneReject .35s ease; }
