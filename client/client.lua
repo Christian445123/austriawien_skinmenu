@@ -362,13 +362,20 @@ AddEventHandler('austriawien_skinmenu:openForTarget', function()
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
+local skinLoaded = false  -- verhindert Doppel-Load bei Reconnect
+
 RegisterNetEvent('austriawien_skinmenu:applySkin')
 AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson)
     if not skinJson or skinJson == '' then
-        -- Noch kein Skin gespeichert → Menü öffnen
+        -- Kein Skin in DB → Erstes Login → Menü öffnen sobald Ped bereit ist
         if Config.FirstTimeSetup then
-            Wait(1000)
-            openSkinMenu()
+            CreateThread(function()
+                -- Warten bis Ped vollständig gespawnt und geladen ist
+                local deadline = GetGameTimer() + 10000
+                repeat Wait(200) until IsScreenFadedIn() and not IsEntityDead(PlayerPedId()) or GetGameTimer() > deadline
+                Wait(500)
+                openSkinMenu()
+            end)
         end
         return
     end
@@ -379,10 +386,15 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson)
     end
 end)
 
-AddEventHandler('esx:playerLoaded', function(xPlayer)
-    TriggerServerEvent('austriawien_skinmenu:loadSkin')
+-- Skin nur beim tatsächlichen Spawn laden (Ped existiert hier bereits)
+AddEventHandler('esx:onPlayerSpawn', function()
+    if not skinLoaded then
+        skinLoaded = true
+        TriggerServerEvent('austriawien_skinmenu:loadSkin')
+    end
 end)
 
-AddEventHandler('esx:onPlayerSpawn', function()
-    TriggerServerEvent('austriawien_skinmenu:loadSkin')
+-- Beim erneuten Joinen (Reconnect) Flag zurücksetzen
+AddEventHandler('esx:playerLoaded', function()
+    skinLoaded = false
 end)
