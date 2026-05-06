@@ -219,10 +219,12 @@ local function openSkinMenu()
     end
 
     SendNUIMessage({
-        type      = 'openMenu',
-        skin      = currentSkin,
-        maxValues = getMaxValues(),
-        slotDefs  = slotDefs
+        type          = 'openMenu',
+        skin          = currentSkin,
+        maxValues     = getMaxValues(),
+        slotDefs      = slotDefs,
+        imageBasePath = Config.ImageBasePath or 'img',
+        imageFormats  = Config.ImageFormats  or { 'png' }
     })
 end
 
@@ -325,7 +327,8 @@ end)
 
 -- Speichern
 RegisterNUICallback('save', function(data, cb)
-    TriggerServerEvent('austriawien_skinmenu:saveSkin', data.skin)
+    -- Skin für eigenen Charakter speichern
+    TriggerServerEvent('austriawien_skinmenu:saveSkin', data.skin, nil)
     closeSkinMenu(false)
     cb({})
 end)
@@ -336,10 +339,27 @@ RegisterNUICallback('cancel', function(data, cb)
     cb({})
 end)
 
--- ─── Slash-Befehl ────────────────────────────────────────────────────────────
-RegisterCommand(Config.Command, function()
-    openSkinMenu()
+-- ─── Slash-Befehl (/awskin oder /awskin [serverID]) ────────────────────────
+RegisterCommand(Config.Command, function(source, args)
+    if args[1] then
+        -- Mit ID → Admin öffnet Menü für anderen Spieler
+        local targetId = tonumber(args[1])
+        if targetId then
+            TriggerServerEvent('austriawien_skinmenu:adminOpenForTarget', targetId)
+        else
+            TriggerEvent('chat:addMessage', { color = {231,76,60}, args = { '[Garderobe]', 'Ungültige Spieler-ID.' } })
+        end
+    else
+        -- Ohne ID → eigenes Menü
+        openSkinMenu()
+    end
 end, false)
+
+-- Admin hat diesen Client als Ziel ausgewählt
+RegisterNetEvent('austriawien_skinmenu:openForTarget')
+AddEventHandler('austriawien_skinmenu:openForTarget', function()
+    openSkinMenu()
+end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
 RegisterNetEvent('austriawien_skinmenu:applySkin')

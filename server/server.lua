@@ -3,6 +3,15 @@ local ESX = nil
 -- ─── ESX holen ───────────────────────────────────────────────────────────────
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
+-- ─── Admin-Prüfung ───────────────────────────────────────────────────────────
+local function isAdmin(xPlayer)
+    local group = xPlayer.getGroup()
+    for _, g in ipairs(Config.AdminGroups) do
+        if group == g then return true end
+    end
+    return false
+end
+
 -- ─── Datenbank-Tabelle anlegen ───────────────────────────────────────────────
 CreateThread(function()
     MySQL.query([[
@@ -39,8 +48,10 @@ AddEventHandler('austriawien_skinmenu:loadSkin', function()
 end)
 
 -- ─── Skin speichern ──────────────────────────────────────────────────────────
+-- targetIdentifier = nil  → eigenen Skin speichern
+-- targetIdentifier = str  → Admin speichert Skin für anderen Spieler (nur intern)
 RegisterNetEvent('austriawien_skinmenu:saveSkin')
-AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData)
+AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdentifier)
     local src     = source
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
@@ -48,8 +59,23 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData)
     -- Skin-Daten müssen ein Table sein
     if type(skinData) ~= 'table' then return end
 
-    local identifier = xPlayer.identifier
-    local skinJson   = json.encode(skinData)
+    -- Ziel-Identifier bestimmen
+    local identifier
+    if targetIdentifier and type(targetIdentifier) == 'string' and targetIdentifier ~= '' then
+        -- Admin speichert für anderen → Berechtigungsprüfung
+        if not isAdmin(xPlayer) then
+            TriggerClientEvent('chat:addMessage', src, {
+                color = { 231, 76, 60 }, multiline = false,
+                args  = { '[Garderobe]', 'Keine Berechtigung.' }
+            })
+            return
+        end
+        identifier = targetIdentifier
+    else
+        identifier = xPlayer.identifier
+    end
+
+    local skinJson = json.encode(skinData)
 
     MySQL.query(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
@@ -59,11 +85,42 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData)
                 TriggerClientEvent('chat:addMessage', src, {
                     color  = { 52, 211, 153 },
                     multiline = false,
-                    args   = { '[Garderobe]', 'Dein Skin wurde gespeichert.' }
+                    args   = { '[Garderobe]', 'Skin gespeichert.' }
                 })
             end
         end
     )
+end)
+
+-- ─── Admin öffnet Menü für anderen Spieler ───────────────────────────────────
+RegisterNetEvent('austriawien_skinmenu:adminOpenForTarget')
+AddEventHandler('austriawien_skinmenu:adminOpenForTarget', function(targetServerId)
+    local src     = source
+    local xAdmin  = ESX.GetPlayerFromId(src)
+    if not xAdmin then return end
+
+    if not isAdmin(xAdmin) then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = { 231, 76, 60 }, multiline = false,
+            args  = { '[Garderobe]', 'Keine Berechtigung.' }
+        })
+        return
+    end
+
+    local xTarget = ESX.GetPlayerFromId(targetServerId)
+    if not xTarget then
+        TriggerClientEvent('chat:addMessage', src, {
+            color = { 231, 76, 60 }, multiline = false,
+            args  = { '[Garderobe]', 'Spieler nicht gefunden.' }
+        })
+        return
+    end
+
+    TriggerClientEvent('austriawien_skinmenu:openForTarget', targetServerId)
+    TriggerClientEvent('chat:addMessage', src, {
+        color = { 52, 211, 153 }, multiline = false,
+        args  = { '[Garderobe]', ('Skin-Menü für Spieler %d geöffnet.'):format(targetServerId) }
+    })
 end)
 
 -- ─── Skin per Export abrufbar machen (für andere Ressourcen) ─────────────────
