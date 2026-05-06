@@ -9,10 +9,11 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 ### 2026-05-06
 - **Bugfix:** `MySQL.query` → `MySQL.update` in `saveSkin` (server.lua:84 – `attempt to compare number with table`)
-- **Layout:** Menü ist kein Vollbild mehr – Panels haben `height: 82vh / max-height: 740px` und abgerundete Ecken
+- **Layout:** Menü ist kein Vollbild mehr – `#app` bekommt `top: 50% / transform: translateY(-50%) / height: 82vh` statt `inset: 0`; Panels erben die Höhe von `#app` (kein eigenes `height` mehr nötig)
 - **Timing:** Skin-Menü öffnet jetzt erst **nach** der Charakter-Erstellung, nicht mehr währenddessen
+- **Timing-Fix 2:** Ursache für "Menü erscheint trotzdem zu früh" gefunden: `TriggerClientEvent` ohne `RegisterNetEvent` wird vom Client ignoriert. Lösung: `zr_player_created()` Hook in `zr-config/zr-build-c.lua` überschrieben – feuert jetzt `TriggerEvent('austriawien_skinmenu:charCreated')` (lokaler Event, kein RegisterNetEvent nötig)
 - **Neu:** `Config.IdentityResource` – Auswahl zwischen `'zr-identity'`, `'esx_identity'` oder `''`
-- **Neu:** `zr_custom_spawn_menu` in `zr-identity` triggert `austriawien_skinmenu:charCreated` → Skin-Menü öffnet automatisch nach „Create character"
+- **Neu:** `zr_player_created()` in `zr-identity/zr-config/zr-build-c.lua` als primärer Hook (client-seitig, zuverlässiger als Server→Client Event)
 - **Neu:** 3-Panel-Layout (links Slots | Mitte transparent/live Charakter | rechts Garderobe)
 - **Neu:** `Config.CameraSideOffset` – zentriert den Charakter im transparenten Mittelbereich
 - **Neu:** README erstellt
@@ -229,21 +230,15 @@ austriawien_skinmenu/
 ---
 
 ### Skin-Menü erscheint während der Charakter-Erstellung
-**Ursache:** `Config.IdentityResource` nicht oder falsch gesetzt.  
-**Lösung:**
+**Ursache 1:** `Config.IdentityResource` nicht oder falsch gesetzt.  
+**Ursache 2 (zr-identity):** `TriggerClientEvent` vom Server braucht `RegisterNetEvent` auf dem Client – wurde ignoriert.  
+**Lösung:** `zr_player_created()` in `zr-identity/zr-config/zr-build-c.lua` überschreiben:
 ```lua
--- Für zr-identity:
-Config.IdentityResource = 'zr-identity'
-
--- Für esx_identity:
-Config.IdentityResource = 'esx_identity'
-```
-Außerdem sicherstellen dass `zr_custom_spawn_menu` in `zr-identity/zr-config/zr-build-s.lua` den Event triggert:
-```lua
-function zr_custom_spawn_menu(zr_source, zr_fdata)
-    TriggerClientEvent('austriawien_skinmenu:charCreated', zr_source)
+function zr_player_created()
+    TriggerEvent('austriawien_skinmenu:charCreated')
 end
 ```
+`TriggerEvent` ist ein **lokaler** Client-Event – kein `RegisterNetEvent` nötig. Diese Funktion wird vom kompilierten zr-identity aufgerufen sobald der Charakter erstellt wurde.
 
 ---
 
