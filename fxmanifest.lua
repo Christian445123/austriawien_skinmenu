@@ -3,7 +3,7 @@ game 'gta5'
 
 name        'austriawien_skinmenu'
 description 'AustriaWien – Drag & Drop Skin-Menü für ESX'
-version     '1.0.3'
+version     '1.0.4'
 author      'GamingDevelopment'
 
 shared_scripts {

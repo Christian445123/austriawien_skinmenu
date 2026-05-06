@@ -3,7 +3,7 @@ Config = {}
 -- ─── Debug ────────────────────────────────────────────────────────────────────
 -- true  → alle Logs in die F8-Konsole (Client) und Server-Konsole schreiben
 -- false → kein Output (für Produktion)
-Config.Debug = true
+Config.Debug = false
 
 -- ─── Befehle ──────────────────────────────────────────────────────────────────
 -- /awskin          → eigenes Skin-Menü öffnen
@@ -14,7 +14,7 @@ Config.Command = 'awskin'
 Config.DatabaseTable = 'austriawien_skins'
 
 -- ─── Admin-Gruppen, die /awskin [id] auf andere Spieler anwenden dürfen ───────
-Config.AdminGroups = { 'admin', 'superadmin', 'god' }
+Config.AdminGroups = { 'admin'}
 
 -- ─── Charakter einfrieren wenn Menü offen ────────────────────────────────────
 Config.FreezeOnOpen = true

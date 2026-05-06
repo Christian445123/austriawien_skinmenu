@@ -171,7 +171,9 @@ end
 local function createCamera()
     local ped     = PlayerPedId()
     local pos     = GetEntityCoords(ped)
-    camAngle      = GetEntityHeading(ped)
+    -- Negatives Vorzeichen: GTA Heading läuft im Uhrzeigersinn (90° = Westen, nicht Osten)
+    -- -heading stellt die Kamera immer vor den Charakter (Vorderseite sichtbar)
+    camAngle      = -GetEntityHeading(ped)
 
     -- Seitwärts-Versatz: rechtwinklig zur Blickrichtung der Kamera
     local sideOffset = Config.CameraSideOffset or -0.3  -- negativ = leicht nach rechts versetzen
@@ -412,6 +414,7 @@ end)
 -- ─── Slash-Befehl (/awskin oder /awskin [serverID]) ────────────────────────
 RegisterCommand(Config.Command, function(source, args)
     if args[1] then
+        -- /awskin [id] → Admin-Aktion, Prüfung läuft serverseitig
         local targetId = tonumber(args[1])
         if targetId then
             dbg('Befehl: öffne Menü für Spieler %d (Admin)', targetId)
@@ -421,8 +424,16 @@ RegisterCommand(Config.Command, function(source, args)
             TriggerEvent('chat:addMessage', { color = {231,76,60}, args = { '[Garderobe]', 'Ungültige Spieler-ID.' } })
         end
     else
-        dbg('Befehl: eigenes Menü öffnen')
-        openSkinMenu()
+        -- /awskin (eigenes Menü) → Server prüft: Admin ODER erstes Mal
+        ESX.TriggerServerCallback('austriawien_skinmenu:canOpenMenu', function(allowed)
+            if allowed then
+                dbg('Befehl: eigenes Menü öffnen (Zugriff gewährt)')
+                openSkinMenu()
+            else
+                dbg('Befehl: Zugriff verweigert (kein Admin)')
+                TriggerEvent('chat:addMessage', { color = {231,76,60}, args = { '[Garderobe]', 'Kein Zugriff. Nur Admins können das Menü öffnen.' } })
+            end
+        end)
     end
 end, false)
 

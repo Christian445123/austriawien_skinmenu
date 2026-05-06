@@ -190,9 +190,25 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdenti
         end
     )
 end)
+-- ─── Berechtigungs-Callback für /awskin (eigenes Menü) ──────────────────────
+ESX.RegisterServerCallback('austriawien_skinmenu:canOpenMenu', function(source, cb)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if not xPlayer then cb(false) return end
 
+    -- Admins dürfen immer
+    if isAdmin(xPlayer) then cb(true) return end
+
+    -- Erstes Mal (kein Skin in DB) → ebenfalls erlaubt
+    MySQL.query(
+        'SELECT 1 FROM ?? WHERE identifier = ? LIMIT 1',
+        { Config.DatabaseTable, xPlayer.identifier },
+        function(rows)
+            cb(not rows or #rows == 0)
+        end
+    )
+end)
 -- ─── Admin öffnet Menü für anderen Spieler ───────────────────────────────────
-RegisterNetEvent('austriawien_skinmenu:adminOpenForTarget')
+
 AddEventHandler('austriawien_skinmenu:adminOpenForTarget', function(targetServerId)
     local src     = source
     local xAdmin  = ESX.GetPlayerFromId(src)
