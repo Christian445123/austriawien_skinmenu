@@ -73,11 +73,6 @@ Config.ImageFormats = { 'png', 'jpg', 'webp' }
 -- Beispiel: Config.EUPResources = { 'eup-stream', 'eup-sp' }
 Config.EUPResources = {}
 
--- ─── Lizenz-Prüfung ──────────────────────────────────────────────────────────
--- false = Prüfung deaktiviert (Standard, für Entwicklung/Test)
--- true  = Resource stoppt beim Start wenn kein gültiger Schlüssel gesetzt ist
-Config.CheckLicense = false
-
--- Lizenzschlüssel für diese Resource.
--- Trage den korrekten Schlüssel ein wenn Config.CheckLicense = true gesetzt ist.
-Config.LicenseKey = 'AW-SKIN-2026-MIDCORE'
+-- ─── Lizenz ──────────────────────────────────────────────────────────────────
+-- Lizenzschlüssel – wird beim Ressourcenstart geprüft.
+Config.LicenseKey = '' ---AW-SKIN-2026-MIDCORE
