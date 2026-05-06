@@ -1,0 +1,538 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AustriaWien Garderobe – CSS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --gold:      #d4a017;
+    --gold-glow: #f0c040;
+    --bg-deep:   #0d0d14;
+    --bg-panel:  #13131e;
+    --bg-card:   #1b1b2a;
+    --bg-hover:  #222236;
+    --border:    rgba(212, 160, 23, 0.25);
+    --text:      #e8e8f0;
+    --text-dim:  #7a7a9a;
+    --radius:    8px;
+    --trans:     0.18s ease;
+}
+
+html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    user-select: none;
+    overflow: hidden;
+}
+
+/* ─── Utility ───────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ─── Root-Overlay ───────────────────────────────────────────────────────── */
+#app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    animation: fadeIn .25s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── Menü-Container ─────────────────────────────────────────────────────── */
+.menu-wrap {
+    width: 960px;
+    max-width: 96vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 0 60px rgba(212, 160, 23, 0.12), 0 8px 40px rgba(0,0,0,.8);
+    overflow: hidden;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    height: 46px;
+    background: linear-gradient(90deg, #0d0d14, #1a1626);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(212,160,23,.4);
+}
+
+.brand-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 10px var(--gold-glow);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.btn-close {
+    background: none;
+    border: 1px solid rgba(255,255,255,.15);
+    color: var(--text-dim);
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--trans);
+}
+.btn-close:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+    background: rgba(231,76,60,.1);
+}
+
+/* ─── Body ───────────────────────────────────────────────────────────────── */
+.menu-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ─── Linke Spalte – Slots ───────────────────────────────────────────────── */
+.panel-slots {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+}
+.panel-slots::-webkit-scrollbar { width: 4px; }
+.panel-slots::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+.panel-title {
+    padding: 12px 14px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--gold);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+/* Kamera-Controls */
+.camera-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.cam-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+}
+.btn-rotate {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--gold);
+    width: 32px; height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: var(--trans);
+}
+.btn-rotate:hover {
+    background: var(--gold);
+    color: var(--bg-deep);
+}
+
+/* Slot-Gruppen */
+.slot-groups { padding: 8px 8px 14px; }
+
+.slot-group { margin-bottom: 12px; }
+
+.slot-group-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    padding: 4px 6px;
+    margin-bottom: 4px;
+}
+
+.slot-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+/* Einzelner Equip-Slot */
+.equip-slot {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 4px;
+    background: var(--bg-card);
+    border: 2px dashed rgba(212,160,23,.2);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--trans);
+    min-height: 58px;
+    position: relative;
+}
+.equip-slot:hover {
+    border-color: var(--gold);
+    background: var(--bg-hover);
+}
+.equip-slot.active {
+    border-style: solid;
+    border-color: var(--gold);
+    background: rgba(212,160,23,.08);
+}
+.equip-slot.drag-over {
+    border-color: var(--gold-glow);
+    background: rgba(240,192,64,.15);
+    box-shadow: 0 0 12px rgba(240,192,64,.3);
+}
+.equip-slot.equipped {
+    border-color: rgba(52, 211, 153, .5);
+}
+
+.slot-icon  { font-size: 18px; line-height: 1; }
+.slot-name  { font-size: 9px; color: var(--text-dim); margin-top: 2px; letter-spacing: .5px; }
+.slot-val   {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-top: 2px;
+}
+
+/* ─── Rechtes Panel – Garderobe ──────────────────────────────────────────── */
+.panel-wardrobe {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Kategorie-Navigation */
+.category-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    flex-shrink: 0;
+}
+
+.cat-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 12px;
+    transition: var(--trans);
+    white-space: nowrap;
+}
+.cat-btn:hover {
+    border-color: var(--gold);
+    color: var(--text);
+}
+.cat-btn.active {
+    background: rgba(212,160,23,.15);
+    border-color: var(--gold);
+    color: var(--gold);
+    font-weight: 600;
+}
+
+/* Wardrobe Content */
+.wardrobe-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+.wview { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.wview.active { display: flex; }
+
+/* Items-Grid */
+.items-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 6px;
+    padding: 10px 12px;
+    overflow-y: auto;
+    align-content: start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+}
+.items-grid::-webkit-scrollbar { width: 4px; }
+.items-grid::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+/* Item-Karte */
+.item-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius);
+    cursor: grab;
+    transition: var(--trans);
+    min-height: 72px;
+    position: relative;
+}
+.item-card:hover {
+    border-color: var(--gold);
+    background: var(--bg-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+.item-card.active {
+    border-color: var(--gold);
+    background: rgba(212,160,23,.12);
+    box-shadow: 0 0 14px rgba(212,160,23,.25);
+}
+.item-card:active { cursor: grabbing; }
+.item-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.item-card-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+.item-card-id {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+.item-card-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-align: center;
+}
+.item-card-color {
+    width: 100%;
+    height: 3px;
+    border-radius: 0 0 var(--radius) var(--radius);
+    margin-top: 4px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+
+/* Textur-Bar */
+.texture-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    flex-shrink: 0;
+}
+.tex-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+}
+.btn-tex {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--gold);
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: var(--trans);
+}
+.btn-tex:hover { background: var(--gold); color: var(--bg-deep); }
+.btn-tex:disabled { opacity: 0.3; cursor: default; }
+.tex-value {
+    min-width: 28px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+}
+.tex-max { color: var(--text-dim); font-size: 12px; }
+
+/* ─── Gesichts-Panel ─────────────────────────────────────────────────────── */
+#view-face {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+}
+#view-face::-webkit-scrollbar { width: 4px; }
+#view-face::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+.face-sections { padding: 10px 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.face-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+}
+.face-section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.face-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.face-row label {
+    width: 150px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+.face-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--bg-hover);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.face-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px rgba(212,160,23,.5);
+    cursor: pointer;
+}
+.face-slider-val {
+    width: 36px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold);
+}
+
+/* Haarfarb-Palette */
+.hair-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.hair-color-chip {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: var(--trans);
+}
+.hair-color-chip:hover { transform: scale(1.25); }
+.hair-color-chip.active {
+    border-color: var(--gold);
+    box-shadow: 0 0 6px var(--gold-glow);
+}
+
+/* Face-Feature-Slider-Liste */
+#face-features-list .face-row label { width: 170px; }
+
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+.menu-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    flex-shrink: 0;
+}
+
+.btn-action {
+    padding: 9px 28px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: var(--trans);
+    border: 1px solid;
+}
+.btn-cancel {
+    background: transparent;
+    border-color: rgba(231,76,60,.5);
+    color: #e74c3c;
+}
+.btn-cancel:hover {
+    background: rgba(231,76,60,.15);
+    border-color: #e74c3c;
+}
+.btn-save {
+    background: rgba(212,160,23,.15);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+.btn-save:hover {
+    background: var(--gold);
+    color: var(--bg-deep);
+    box-shadow: 0 0 18px rgba(212,160,23,.4);
+}
+
+/* ─── Drag-Ghost ─────────────────────────────────────────────────────────── */
+#drag-ghost {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    width: 60px; height: 60px;
+    background: var(--bg-card);
+    border: 2px solid var(--gold);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    pointer-events: none;
+}
+
+/* ─── Scrollbar global ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
