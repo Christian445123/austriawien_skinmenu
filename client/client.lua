@@ -1,9 +1,17 @@
-local ESX        = nil
-local isMenuOpen = false
-local cam        = nil
-local camAngle   = 0.0
-local savedSkin  = {}
+local ESX         = nil
+local isMenuOpen  = false
+local cam         = nil
+local camAngle    = 0.0
+local savedSkin   = {}
 local currentSkin = {}
+
+-- ─── Debug-Helper ────────────────────────────────────────────────────────────
+-- Debug-Ausgaben im FiveM-Client-Log (F8-Konsole)
+local function dbg(msg, ...)
+    if Config.Debug then
+        print(('^3[AWskin CLIENT]^7 ' .. tostring(msg)):format(...))
+    end
+end
 
 -- ─── ESX holen ───────────────────────────────────────────────────────────────
 CreateThread(function()
@@ -191,15 +199,20 @@ end
 
 -- ─── Menü öffnen / schließen ─────────────────────────────────────────────────
 local function openSkinMenu()
-    if isMenuOpen then return end
+    if isMenuOpen then
+        dbg('openSkinMenu: bereits offen, abbruch')
+        return
+    end
 
     local ped = PlayerPedId()
+    dbg('Menü öffnen | Ped=%d | Pos=%.1f,%.1f,%.1f', ped, table.unpack({ GetEntityCoords(ped) }))
     savedSkin    = readCurrentSkin()
     currentSkin  = readCurrentSkin()
     isMenuOpen   = true
 
     if Config.FreezeOnOpen then
         FreezeEntityPosition(ped, true)
+        dbg('Ped eingefroren')
     end
     DisplayHud(false)
     DisplayRadar(false)
@@ -226,13 +239,19 @@ local function openSkinMenu()
         imageBasePath = Config.ImageBasePath or 'img',
         imageFormats  = Config.ImageFormats  or { 'png' }
     })
+    dbg('NUI-Nachricht openMenu gesendet | %d Slots | %d maxValues', #slotDefs, (function() local n=0 for _ in pairs(getMaxValues()) do n=n+1 end return n end)())
 end
 
 local function closeSkinMenu(restore)
-    if not isMenuOpen then return end
+    if not isMenuOpen then
+        dbg('closeSkinMenu: Menü war nicht offen')
+        return
+    end
     isMenuOpen = false
+    dbg('Menü schließen | restore=%s', tostring(restore))
 
     if restore then
+        dbg('Originalsk in wird wiederhergestellt')
         applySkin(savedSkin)
     end
 
@@ -241,6 +260,7 @@ local function closeSkinMenu(restore)
     DisplayRadar(true)
     FreezeEntityPosition(PlayerPedId(), false)
     destroyCamera()
+    dbg('Menü geschlossen')
 end
 
 -- ─── NUI Callbacks ───────────────────────────────────────────────────────────
@@ -249,7 +269,12 @@ end
 RegisterNUICallback('updateSlot', function(data, cb)
     local ped  = PlayerPedId()
     local slot = SLOT_MAP[data.id]
-    if not slot then cb({}) return end
+    if not slot then
+        dbg('updateSlot: unbekannter Slot "%s"', tostring(data.id))
+        cb({})
+        return
+    end
+    dbg('updateSlot | slot=%s | drawable=%d | texture=%d', data.id, data.drawable, data.texture)
 
     if slot.type == 'component' then
         local maxTex = math.max(0, GetNumberOfPedTextureVariations(ped, slot.index, data.drawable) - 1)
@@ -327,6 +352,7 @@ end)
 
 -- Speichern
 RegisterNUICallback('save', function(data, cb)
+    dbg('NUI save – sende Skin an Server')
     -- Skin für eigenen Charakter speichern
     TriggerServerEvent('austriawien_skinmenu:saveSkin', data.skin, nil)
     closeSkinMenu(false)
@@ -335,6 +361,7 @@ end)
 
 -- Abbrechen
 RegisterNUICallback('cancel', function(data, cb)
+    dbg('NUI cancel – stelle Original-Skin wieder her')
     closeSkinMenu(true)
     cb({})
 end)
@@ -342,15 +369,16 @@ end)
 -- ─── Slash-Befehl (/awskin oder /awskin [serverID]) ────────────────────────
 RegisterCommand(Config.Command, function(source, args)
     if args[1] then
-        -- Mit ID → Admin öffnet Menü für anderen Spieler
         local targetId = tonumber(args[1])
         if targetId then
+            dbg('Befehl: öffne Menü für Spieler %d (Admin)', targetId)
             TriggerServerEvent('austriawien_skinmenu:adminOpenForTarget', targetId)
         else
+            dbg('Befehl: ungültige ID "%s"', tostring(args[1]))
             TriggerEvent('chat:addMessage', { color = {231,76,60}, args = { '[Garderobe]', 'Ungültige Spieler-ID.' } })
         end
     else
-        -- Ohne ID → eigenes Menü
+        dbg('Befehl: eigenes Menü öffnen')
         openSkinMenu()
     end
 end, false)
@@ -362,17 +390,23 @@ AddEventHandler('austriawien_skinmenu:openForTarget', function()
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
-local skinLoaded = false  -- verhindert Doppel-Load bei Reconnect
+local skinLoaded   = false  -- verhindert Doppel-Load innerhalb einer Session
+local isFirstLogin = false  -- wird vom Server gesetzt wenn kein Skin in DB
 
 RegisterNetEvent('austriawien_skinmenu:applySkin')
-AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson)
-    if not skinJson or skinJson == '' then
-        -- Kein Skin in DB → Erstes Login → Menü öffnen sobald Ped bereit ist
+AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
+    dbg('applySkin empfangen | firstLogin=%s | json-länge=%d', tostring(firstLogin), skinJson and #skinJson or 0)
+
+    if firstLogin then
+        -- Erstes Login: Menü öffnen, sobald der Ped wirklich bereit ist
         if Config.FirstTimeSetup then
+            dbg('Erster Login erkannt – warte auf Ped...')
             CreateThread(function()
-                -- Warten bis Ped vollständig gespawnt und geladen ist
                 local deadline = GetGameTimer() + 10000
-                repeat Wait(200) until IsScreenFadedIn() and not IsEntityDead(PlayerPedId()) or GetGameTimer() > deadline
+                repeat
+                    Wait(200)
+                until (IsScreenFadedIn() and not IsEntityDead(PlayerPedId())) or GetGameTimer() > deadline
+                dbg('Ped bereit – öffne Skin-Menü (First-Time-Setup)')
                 Wait(500)
                 openSkinMenu()
             end)
@@ -380,21 +414,34 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson)
         return
     end
 
+    if not skinJson or skinJson == '' then
+        dbg('Leeres skinJson empfangen, ignoriere')
+        return
+    end
+
     local skin = json.decode(skinJson)
     if skin then
+        dbg('Skin wird angewendet')
         applySkin(skin)
+    else
+        dbg('FEHLER: json.decode fehlgeschlagen!')
     end
 end)
 
 -- Skin nur beim tatsächlichen Spawn laden (Ped existiert hier bereits)
 AddEventHandler('esx:onPlayerSpawn', function()
+    dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
     if not skinLoaded then
         skinLoaded = true
+        dbg('Sende loadSkin an Server')
         TriggerServerEvent('austriawien_skinmenu:loadSkin')
+    else
+        dbg('Skin bereits geladen, überspringe loadSkin')
     end
 end)
 
 -- Beim erneuten Joinen (Reconnect) Flag zurücksetzen
 AddEventHandler('esx:playerLoaded', function()
+    dbg('esx:playerLoaded – setze skinLoaded zurück')
     skinLoaded = false
 end)

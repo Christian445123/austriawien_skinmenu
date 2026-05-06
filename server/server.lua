@@ -2,7 +2,12 @@ local ESX = nil
 
 -- ─── ESX holen ───────────────────────────────────────────────────────────────
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
-
+-- ─── Debug-Helper ────────────────────────────────────────────────────────────
+local function dbg(msg, ...)
+    if Config.Debug then
+        print(('^3[AWskin SERVER]^7 ' .. tostring(msg)):format(...))
+    end
+end
 -- ─── Admin-Prüfung ───────────────────────────────────────────────────────────
 local function isAdmin(xPlayer)
     local group = xPlayer.getGroup()
@@ -27,21 +32,28 @@ end)
 -- ─── Skin laden ──────────────────────────────────────────────────────────────
 RegisterNetEvent('austriawien_skinmenu:loadSkin')
 AddEventHandler('austriawien_skinmenu:loadSkin', function()
-    local src    = source
+    local src     = source
     local xPlayer = ESX.GetPlayerFromId(src)
-    if not xPlayer then return end
+    if not xPlayer then
+        dbg('loadSkin: kein Spieler für src=%d', src)
+        return
+    end
 
     local identifier = xPlayer.identifier
+    dbg('loadSkin | src=%d | identifier=%s', src, identifier)
 
     MySQL.query(
         'SELECT skin FROM ?? WHERE identifier = ?',
         { Config.DatabaseTable, identifier },
         function(result)
             if result and result[1] then
-                TriggerClientEvent('austriawien_skinmenu:applySkin', src, result[1].skin)
+                dbg('Skin gefunden für %s (%d Bytes)', identifier, #result[1].skin)
+                -- firstLogin = false: Skin vorhanden
+                TriggerClientEvent('austriawien_skinmenu:applySkin', src, result[1].skin, false)
             else
-                -- Kein Eintrag → ersten Skin-Setup auslösen
-                TriggerClientEvent('austriawien_skinmenu:applySkin', src, '')
+                dbg('KEIN Skin in DB für %s → First-Time-Setup', identifier)
+                -- firstLogin = true: kein Eintrag → Menü beim Client öffnen
+                TriggerClientEvent('austriawien_skinmenu:applySkin', src, '', true)
             end
         end
     )
@@ -76,11 +88,13 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdenti
     end
 
     local skinJson = json.encode(skinData)
+    dbg('saveSkin | identifier=%s | json-länge=%d', identifier, #skinJson)
 
     MySQL.query(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
         { Config.DatabaseTable, identifier, skinJson, skinJson },
         function(affectedRows)
+            dbg('saveSkin: affectedRows=%d', affectedRows or 0)
             if affectedRows > 0 then
                 TriggerClientEvent('chat:addMessage', src, {
                     color  = { 52, 211, 153 },
@@ -98,6 +112,7 @@ AddEventHandler('austriawien_skinmenu:adminOpenForTarget', function(targetServer
     local src     = source
     local xAdmin  = ESX.GetPlayerFromId(src)
     if not xAdmin then return end
+    dbg('adminOpenForTarget | admin=%d | ziel=%d', src, targetServerId)
 
     if not isAdmin(xAdmin) then
         TriggerClientEvent('chat:addMessage', src, {

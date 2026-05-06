@@ -1,5 +1,10 @@
 Config = {}
 
+-- ─── Debug ────────────────────────────────────────────────────────────────────
+-- true  → alle Logs in die F8-Konsole (Client) und Server-Konsole schreiben
+-- false → kein Output (für Produktion)
+Config.Debug = true
+
 -- ─── Befehle ──────────────────────────────────────────────────────────────────
 -- /awskin          → eigenes Skin-Menü öffnen
 -- /awskin [id]     → Skin-Menü für anderen Spieler öffnen (Admin)
