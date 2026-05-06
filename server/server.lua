@@ -90,12 +90,12 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdenti
     local skinJson = json.encode(skinData)
     dbg('saveSkin | identifier=%s | json-länge=%d', identifier, #skinJson)
 
-    MySQL.query(
+    MySQL.update(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
         { Config.DatabaseTable, identifier, skinJson, skinJson },
         function(affectedRows)
             dbg('saveSkin: affectedRows=%d', affectedRows or 0)
-            if affectedRows > 0 then
+            if affectedRows and affectedRows > 0 then
                 TriggerClientEvent('chat:addMessage', src, {
                     color  = { 52, 211, 153 },
                     multiline = false,
