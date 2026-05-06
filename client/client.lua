@@ -214,7 +214,8 @@ local function openSkinMenu()
     end
 
     local ped = PlayerPedId()
-    dbg('Menü öffnen | Ped=%d | Pos=%.1f,%.1f,%.1f', ped, table.unpack({ GetEntityCoords(ped) }))
+    local pos = GetEntityCoords(ped)
+    dbg('Menü öffnen | Ped=%d | Pos=%.1f,%.1f,%.1f', ped, pos.x, pos.y, pos.z)
     savedSkin    = readCurrentSkin()
     currentSkin  = readCurrentSkin()
     isMenuOpen   = true
