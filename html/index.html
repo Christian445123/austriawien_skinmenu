@@ -10,8 +10,268 @@
 
 <div id="app" class="hidden">
 
-    <!-- ═══ Haupt-Container ══════════════════════════════════════════════════ -->
-    <div class="menu-wrap">
+    <!-- ═══ LINKS – Charakter-Slot-Übersicht ══════════════════════════════════ -->
+    <aside class="panel-left">
+
+        <div class="panel-header">
+            <div class="header-brand"><span class="brand-dot"></span>CHARAKTER</div>
+            <button class="btn-close" id="btn-close" title="Schließen (ESC)">✕</button>
+        </div>
+
+        <div class="slot-scroll">
+            <div class="slot-groups">
+
+                <div class="slot-group">
+                    <div class="slot-group-label">KOPF</div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="hat" id="eqslot-hat">
+                            <span class="slot-icon">🎩</span>
+                            <span class="slot-name">Hut</span>
+                            <span class="slot-val" id="val-hat">–</span>
+                        </div>
+                        <div class="equip-slot" data-slot="hair" id="eqslot-hair">
+                            <span class="slot-icon">💇</span>
+                            <span class="slot-name">Haare</span>
+                            <span class="slot-val" id="val-hair">0</span>
+                        </div>
+                    </div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="glasses" id="eqslot-glasses">
+                            <span class="slot-icon">👓</span>
+                            <span class="slot-name">Brille</span>
+                            <span class="slot-val" id="val-glasses">–</span>
+                        </div>
+                        <div class="equip-slot" data-slot="ear" id="eqslot-ear">
+                            <span class="slot-icon">💎</span>
+                            <span class="slot-name">Ohr</span>
+                            <span class="slot-val" id="val-ear">–</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slot-group">
+                    <div class="slot-group-label">GESICHT</div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="mask" id="eqslot-mask">
+                            <span class="slot-icon">🎭</span>
+                            <span class="slot-name">Maske</span>
+                            <span class="slot-val" id="val-mask">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slot-group">
+                    <div class="slot-group-label">OBERKÖRPER</div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="jacket" id="eqslot-jacket">
+                            <span class="slot-icon">🧥</span>
+                            <span class="slot-name">Jacke</span>
+                            <span class="slot-val" id="val-jacket">0</span>
+                        </div>
+                        <div class="equip-slot" data-slot="undershirt" id="eqslot-undershirt">
+                            <span class="slot-icon">👕</span>
+                            <span class="slot-name">Hemd</span>
+                            <span class="slot-val" id="val-undershirt">0</span>
+                        </div>
+                    </div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="arms" id="eqslot-arms">
+                            <span class="slot-icon">💪</span>
+                            <span class="slot-name">Arme</span>
+                            <span class="slot-val" id="val-arms">0</span>
+                        </div>
+                        <div class="equip-slot" data-slot="armor" id="eqslot-armor">
+                            <span class="slot-icon">🦺</span>
+                            <span class="slot-name">Weste</span>
+                            <span class="slot-val" id="val-armor">0</span>
+                        </div>
+                    </div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="accessories" id="eqslot-accessories">
+                            <span class="slot-icon">🧣</span>
+                            <span class="slot-name">Accessoire</span>
+                            <span class="slot-val" id="val-accessories">0</span>
+                        </div>
+                        <div class="equip-slot" data-slot="bag" id="eqslot-bag">
+                            <span class="slot-icon">🎒</span>
+                            <span class="slot-name">Tasche</span>
+                            <span class="slot-val" id="val-bag">0</span>
+                        </div>
+                    </div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="decal" id="eqslot-decal">
+                            <span class="slot-icon">🏷</span>
+                            <span class="slot-name">Abzeichen</span>
+                            <span class="slot-val" id="val-decal">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slot-group">
+                    <div class="slot-group-label">UNTERKÖRPER</div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="legs" id="eqslot-legs">
+                            <span class="slot-icon">👖</span>
+                            <span class="slot-name">Hose</span>
+                            <span class="slot-val" id="val-legs">0</span>
+                        </div>
+                        <div class="equip-slot" data-slot="shoes" id="eqslot-shoes">
+                            <span class="slot-icon">👟</span>
+                            <span class="slot-name">Schuhe</span>
+                            <span class="slot-val" id="val-shoes">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slot-group">
+                    <div class="slot-group-label">HÄNDE</div>
+                    <div class="slot-row">
+                        <div class="equip-slot" data-slot="watch" id="eqslot-watch">
+                            <span class="slot-icon">⌚</span>
+                            <span class="slot-name">Uhr</span>
+                            <span class="slot-val" id="val-watch">–</span>
+                        </div>
+                        <div class="equip-slot" data-slot="bracelet" id="eqslot-bracelet">
+                            <span class="slot-icon">📿</span>
+                            <span class="slot-name">Armband</span>
+                            <span class="slot-val" id="val-bracelet">–</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /slot-groups -->
+        </div><!-- /slot-scroll -->
+    </aside>
+
+    <!-- ═══ MITTE – Vollständig transparent, Charakter sichtbar ══════════════ -->
+    <div class="panel-center">
+        <div class="center-top">
+            <div class="center-title">
+                <span class="brand-dot"></span>
+                GARDEROBE
+                <span class="brand-dot"></span>
+            </div>
+        </div>
+        <div class="center-bottom">
+            <div class="drag-hint">← Kleidung auf Slot ziehen oder rechts klicken</div>
+            <div class="camera-controls">
+                <button class="btn-rotate" id="btn-rotate-left" title="Links drehen">&#9668;</button>
+                <span class="cam-label">DREHEN</span>
+                <button class="btn-rotate" id="btn-rotate-right" title="Rechts drehen">&#9658;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ RECHTS – Garderobe ════════════════════════════════════════════════ -->
+    <div class="panel-right">
+
+        <nav class="category-nav" id="category-nav"></nav>
+
+        <div class="wardrobe-content" id="wardrobe-content">
+
+            <div id="view-items" class="wview active">
+                <div class="items-grid" id="items-grid"></div>
+                <div class="texture-bar">
+                    <span class="tex-label">TEXTUR</span>
+                    <button class="btn-tex" id="btn-tex-prev">&#9668;</button>
+                    <span class="tex-value" id="tex-value">0</span>
+                    <button class="btn-tex" id="btn-tex-next">&#9658;</button>
+                    <span class="tex-max" id="tex-max">/ 0</span>
+                </div>
+            </div>
+
+            <div id="view-face" class="wview">
+                <div class="face-sections">
+
+                    <div class="face-section">
+                        <div class="face-section-title">GESICHTSFORM</div>
+                        <div class="face-row">
+                            <label>Form 1 (0–45)</label>
+                            <input type="range" min="0" max="45" value="0" id="face-shapeFirst" class="face-slider">
+                            <span class="face-slider-val" id="face-shapeFirst-val">0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Form 2 (0–45)</label>
+                            <input type="range" min="0" max="45" value="0" id="face-shapeSecond" class="face-slider">
+                            <span class="face-slider-val" id="face-shapeSecond-val">0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Form Mix</label>
+                            <input type="range" min="0" max="100" value="50" id="face-shapeMix" class="face-slider">
+                            <span class="face-slider-val" id="face-shapeMix-val">0.50</span>
+                        </div>
+                    </div>
+
+                    <div class="face-section">
+                        <div class="face-section-title">HAUTFARBE</div>
+                        <div class="face-row">
+                            <label>Haut 1 (0–45)</label>
+                            <input type="range" min="0" max="45" value="0" id="face-skinFirst" class="face-slider">
+                            <span class="face-slider-val" id="face-skinFirst-val">0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Haut 2 (0–45)</label>
+                            <input type="range" min="0" max="45" value="0" id="face-skinSecond" class="face-slider">
+                            <span class="face-slider-val" id="face-skinSecond-val">0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Haut Mix</label>
+                            <input type="range" min="0" max="100" value="50" id="face-skinMix" class="face-slider">
+                            <span class="face-slider-val" id="face-skinMix-val">0.50</span>
+                        </div>
+                    </div>
+
+                    <div class="face-section">
+                        <div class="face-section-title">HAARFARBE</div>
+                        <div class="hair-colors" id="hair-colors-primary"></div>
+                        <div class="face-row"><label>Strähnchen-Farbe</label></div>
+                        <div class="hair-colors" id="hair-colors-secondary"></div>
+                    </div>
+
+                    <div class="face-section">
+                        <div class="face-section-title">BART &amp; AUGENBRAUEN</div>
+                        <div class="face-row">
+                            <label>Augenbrauen Stil (0–33)</label>
+                            <input type="range" min="0" max="33" value="0" id="ov-eyebrow-idx" class="face-slider">
+                            <span class="face-slider-val" id="ov-eyebrow-idx-val">0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Augenbrauen Stärke</label>
+                            <input type="range" min="0" max="100" value="100" id="ov-eyebrow-op" class="face-slider">
+                            <span class="face-slider-val" id="ov-eyebrow-op-val">1.0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Bart Stil (0–28)</label>
+                            <input type="range" min="0" max="28" value="0" id="ov-beard-idx" class="face-slider">
+                            <span class="face-slider-val" id="ov-beard-idx-val">0</span>
+                        </div>
+                        <div class="face-row">
+                            <label>Bart Stärke</label>
+                            <input type="range" min="0" max="100" value="0" id="ov-beard-op" class="face-slider">
+                            <span class="face-slider-val" id="ov-beard-op-val">0.0</span>
+                        </div>
+                    </div>
+
+                    <div class="face-section">
+                        <div class="face-section-title">GESICHTSZÜGE</div>
+                        <div id="face-features-list"></div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div><!-- /wardrobe-content -->
+
+        <footer class="panel-footer">
+            <button class="btn-action btn-cancel" id="btn-cancel">ABBRECHEN</button>
+            <button class="btn-action btn-save"   id="btn-save">SPEICHERN</button>
+        </footer>
+
+    </div><!-- /panel-right -->
+
+    <div id="drag-ghost"></div>
+
+</div><!-- /#app -->
 
         <!-- ── Header ──────────────────────────────────────────────────────── -->
         <header class="menu-header">

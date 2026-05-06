@@ -163,14 +163,23 @@ local function getMaxValues()
 end
 
 -- ─── Kamera ──────────────────────────────────────────────────────────────────
+-- Die UI hat ein linkes Panel (280px) und ein rechtes Panel (360px).
+-- Der transparente Mittelteil liegt leicht links von der Bildschirmmitte.
+-- Mit einem kleinen Seitenversatz (CameraSideOffset) zentrieren wir den
+-- Charakter visuell im transparenten Bereich.
 local function createCamera()
     local ped     = PlayerPedId()
     local pos     = GetEntityCoords(ped)
     camAngle      = GetEntityHeading(ped)
 
+    -- Seitwärts-Versatz: rechtwinklig zur Blickrichtung der Kamera
+    local sideOffset = Config.CameraSideOffset or -0.3  -- negativ = leicht nach rechts versetzen
+    local sinA = math.sin(math.rad(camAngle))
+    local cosA = math.cos(math.rad(camAngle))
+
     cam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
-    local x = pos.x + Config.CameraDistance * -math.sin(math.rad(camAngle))
-    local y = pos.y + Config.CameraDistance * -math.cos(math.rad(camAngle))
+    local x = pos.x + Config.CameraDistance * -sinA + sideOffset * cosA
+    local y = pos.y + Config.CameraDistance * -cosA - sideOffset * sinA
     SetCamCoord(cam, x, y, pos.z + Config.CameraHeight)
     PointCamAtCoord(cam, pos.x, pos.y, pos.z + 0.5)
     SetCamFov(cam, Config.CameraFOV)

@@ -20,9 +20,13 @@ Config.AdminGroups = { 'admin', 'superadmin', 'god' }
 Config.FreezeOnOpen = true
 
 -- ─── Kamera ───────────────────────────────────────────────────────────────────
-Config.CameraFOV      = 45.0
-Config.CameraDistance = 2.2
-Config.CameraHeight   = 0.5
+Config.CameraFOV        = 45.0
+Config.CameraDistance   = 2.2
+Config.CameraHeight     = 0.5
+-- Seitwärts-Versatz damit der Charakter im transparenten Mittelbereich erscheint.
+-- Negativ = Charakter verschiebt sich auf dem Bildschirm nach rechts (Mitte).
+-- Feintuning je nach Monitor-Auflösung und Panel-Breiten.
+Config.CameraSideOffset = -0.3
 
 -- ─── Skin beim Einloggen laden ────────────────────────────────────────────────
 Config.AutoLoadOnLogin = true

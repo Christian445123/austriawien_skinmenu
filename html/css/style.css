@@ -31,41 +31,45 @@ html, body {
 /* ─── Utility ───────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
-/* ─── Root-Overlay ───────────────────────────────────────────────────────── */
+/* ─── Root-Overlay – 3-Spalten-Layout ───────────────────────────────────── */
+/*
+   LINKS:  .panel-left  (280px) – Charakter-Slots
+   MITTE:  .panel-center (flex:1, TRANSPARENT) – Charakter live sichtbar
+   RECHTS: .panel-right (360px) – Garderobe
+*/
 #app {
     position: fixed;
     inset: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(3px);
+    align-items: stretch;
+    /* Kein Hintergrund → Charakter in der Mitte komplett sichtbar */
     animation: fadeIn .25s ease;
+    pointer-events: none; /* Panels setzen pointer-events: all selbst */
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* ─── Menü-Container ─────────────────────────────────────────────────────── */
-.menu-wrap {
-    width: 960px;
-    max-width: 96vw;
-    max-height: 90vh;
+/* ─── Linkes Panel ───────────────────────────────────────────────────────── */
+.panel-left {
+    width: 280px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    background: var(--bg-deep);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: 0 0 60px rgba(212, 160, 23, 0.12), 0 8px 40px rgba(0,0,0,.8);
+    background: rgba(13, 13, 20, 0.92);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 24px rgba(0,0,0,.6);
+    pointer-events: all;
     overflow: hidden;
 }
 
-/* ─── Header ─────────────────────────────────────────────────────────────── */
-.menu-header {
+/* ─── Panel-Header (Linkes + Rechtes Panel) ──────────────────────────────── */
+.panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 18px;
+    padding: 0 14px;
     height: 46px;
-    background: linear-gradient(90deg, #0d0d14, #1a1626);
+    background: linear-gradient(90deg, rgba(13,13,20,1), rgba(26,22,38,1));
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
@@ -73,103 +77,138 @@ html, body {
 .header-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 15px;
+    gap: 8px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 3px;
     color: var(--gold);
-    text-shadow: 0 0 12px rgba(212,160,23,.4);
+    text-shadow: 0 0 10px rgba(212,160,23,.4);
 }
 
 .brand-dot {
-    width: 8px; height: 8px;
+    width: 7px; height: 7px;
     border-radius: 50%;
     background: var(--gold);
-    box-shadow: 0 0 10px var(--gold-glow);
+    box-shadow: 0 0 8px var(--gold-glow);
     animation: pulse 2s infinite;
+    flex-shrink: 0;
 }
 @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50%       { opacity: 0.4; }
+    50%       { opacity: 0.35; }
 }
 
 .btn-close {
     background: none;
-    border: 1px solid rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.12);
     color: var(--text-dim);
-    width: 28px; height: 28px;
+    width: 26px; height: 26px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     transition: var(--trans);
+    pointer-events: all;
 }
 .btn-close:hover {
     border-color: #e74c3c;
     color: #e74c3c;
-    background: rgba(231,76,60,.1);
+    background: rgba(231,76,60,.12);
 }
 
-/* ─── Body ───────────────────────────────────────────────────────────────── */
-.menu-body {
-    display: flex;
+/* Scrollbereich für Slot-Gruppen */
+.slot-scroll {
     flex: 1;
-    overflow: hidden;
-}
-
-/* ─── Linke Spalte – Slots ───────────────────────────────────────────────── */
-.panel-slots {
-    width: 260px;
-    flex-shrink: 0;
-    background: var(--bg-panel);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--gold) transparent;
 }
-.panel-slots::-webkit-scrollbar { width: 4px; }
-.panel-slots::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+.slot-scroll::-webkit-scrollbar { width: 3px; }
+.slot-scroll::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
 
-.panel-title {
-    padding: 12px 14px 8px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: var(--gold);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+/* ─── Mittleres Panel – Transparent ─────────────────────────────────────── */
+.panel-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px 20px;
+    pointer-events: none; /* Click-Through damit man den Charakter sieht */
+    /* Subtile Vignette an den Rändern zur Orientierung */
+    background:
+        linear-gradient(to right,  rgba(13,13,20,.45) 0%, transparent 18%),
+        linear-gradient(to left,   rgba(13,13,20,.45) 0%, transparent 18%),
+        linear-gradient(to bottom, rgba(0,0,0,.3) 0%, transparent 15%),
+        linear-gradient(to top,    rgba(0,0,0,.3) 0%, transparent 10%);
 }
 
-/* Kamera-Controls */
+.center-top {
+    display: flex;
+    justify-content: center;
+}
+
+.center-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    color: rgba(212,160,23,.7);
+    text-shadow: 0 2px 12px rgba(0,0,0,.8);
+    background: rgba(0,0,0,.25);
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(212,160,23,.15);
+}
+
+.center-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: all;
+}
+
+.drag-hint {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,.3);
+    text-shadow: 0 1px 4px rgba(0,0,0,.8);
+}
+
+/* Kamera-Controls (jetzt in der Mitte unten) */
 .camera-controls {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 10px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
+    background: rgba(13,13,20,.75);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 6px 16px;
 }
 .cam-label {
-    font-size: 11px;
-    letter-spacing: 1px;
+    font-size: 10px;
+    letter-spacing: 2px;
     color: var(--text-dim);
+    min-width: 52px;
+    text-align: center;
 }
 .btn-rotate {
-    background: var(--bg-card);
+    background: none;
     border: 1px solid var(--border);
     color: var(--gold);
-    width: 32px; height: 32px;
-    border-radius: 4px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 11px;
     transition: var(--trans);
 }
 .btn-rotate:hover {
     background: var(--gold);
     color: var(--bg-deep);
+    border-color: var(--gold);
 }
 
 /* Slot-Gruppen */
@@ -234,11 +273,28 @@ html, body {
 }
 
 /* ─── Rechtes Panel – Garderobe ──────────────────────────────────────────── */
-.panel-wardrobe {
-    flex: 1;
+.panel-right {
+    width: 360px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    background: rgba(13, 13, 20, 0.92);
+    backdrop-filter: blur(10px);
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 24px rgba(0,0,0,.6);
+    pointer-events: all;
     overflow: hidden;
+}
+
+/* ─── Panel-Footer ───────────────────────────────────────────────────────── */
+.panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(13,13,20,.95);
+    flex-shrink: 0;
 }
 
 /* Kategorie-Navigation */
@@ -488,17 +544,7 @@ html, body {
 /* Face-Feature-Slider-Liste */
 #face-features-list .face-row label { width: 170px; }
 
-/* ─── Footer ─────────────────────────────────────────────────────────────── */
-.menu-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 18px;
-    border-top: 1px solid var(--border);
-    background: var(--bg-panel);
-    flex-shrink: 0;
-}
-
+/* ─── Footer (bereits oben als .panel-footer definiert) ──────────────────── */
 .btn-action {
     padding: 9px 28px;
     border-radius: 5px;
