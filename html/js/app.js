@@ -267,111 +267,9 @@ function buildItemsGrid(catId) {
     }
 }
 
-// ─── Maus-basiertes Drag System (zuverlässig in FiveM CEF) ─────────────────────
-const _drag = {
-    active:   false,
-    moved:    false,
-    slotId:   null,
-    drawable: null,
-    startX:   0,
-    startY:   0,
-    srcCard:  null,
-};
-
-function _dragMove(e) {
-    if (!_drag.active) return;
-    if (!_drag.moved && (Math.abs(e.clientX - _drag.startX) > 4 || Math.abs(e.clientY - _drag.startY) > 4)) {
-        _drag.moved = true;
-    }
-    if (_drag.moved) {
-        const g = document.getElementById('drag-ghost');
-        g.style.left = (e.clientX - 31) + 'px';
-        g.style.top  = (e.clientY - 31) + 'px';
-        // Drop-Target hervorheben
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        document.querySelectorAll('.equip-slot.drag-over, .body-zone.drag-over-zone').forEach(x =>
-            x.classList.remove('drag-over', 'drag-over-zone')
-        );
-        if (el) {
-            const slot = el.closest('.equip-slot');
-            const zone = el.closest('.body-zone');
-            if (slot) slot.classList.add('drag-over');
-            else if (zone) zone.classList.add('drag-over-zone');
-        }
-    }
-}
-
-function _dragEnd(e) {
-    document.removeEventListener('mousemove', _dragMove);
-    document.removeEventListener('mouseup',   _dragEnd);
-
-    const g = document.getElementById('drag-ghost');
-    g.style.left = '-9999px';
-    g.style.top  = '-9999px';
-
-    document.querySelectorAll('.equip-slot.drag-over, .body-zone.drag-over-zone').forEach(x =>
-        x.classList.remove('drag-over', 'drag-over-zone')
-    );
-    if (_drag.srcCard) _drag.srcCard.classList.remove('dragging');
-
-    if (_drag.moved) {
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        if (el) {
-            const slot = el.closest('.equip-slot');
-            const zone = el.closest('.body-zone');
-            if (slot) {
-                const targetId = slot.dataset.slot;
-                if (targetId === _drag.slotId) {
-                    applyDrawable(targetId, _drag.drawable);
-                } else {
-                    slot.style.boxShadow = '0 0 10px rgba(231,76,60,.7)';
-                    setTimeout(() => slot.style.boxShadow = '', 350);
-                }
-            } else if (zone) {
-                const match = zone.querySelector(`.equip-slot[data-slot="${_drag.slotId}"]`);
-                if (match) {
-                    applyDrawable(_drag.slotId, _drag.drawable);
-                } else {
-                    zone.classList.add('reject');
-                    setTimeout(() => zone.classList.remove('reject'), 400);
-                }
-            }
-        }
-    }
-
-    _drag.active   = false;
-    _drag.moved    = false;
-    _drag.slotId   = null;
-    _drag.drawable = null;
-    _drag.srcCard  = null;
-}
-
-// ─── Karten-Events (Klick + Drag) ─────────────────────────────────────────────
+// ─── Karten-Events (Klick) ────────────────────────────────────────────────────
 function attachCardEvents(card) {
-    // Klick → sofort anwenden (nur wenn nicht gezogen)
-    card.addEventListener('click', () => {
-        if (!_drag.moved) applyDrawable(card.dataset.id, parseInt(card.dataset.drawable));
-    });
-
-    // Drag per Maus starten
-    card.addEventListener('mousedown', e => {
-        if (e.button !== 0) return;
-        _drag.active   = true;
-        _drag.moved    = false;
-        _drag.slotId   = card.dataset.id;
-        _drag.drawable = parseInt(card.dataset.drawable);
-        _drag.startX   = e.clientX;
-        _drag.startY   = e.clientY;
-        _drag.srcCard  = card;
-
-        const g = document.getElementById('drag-ghost');
-        g.textContent = slotById(card.dataset.id)?.icon ?? '?';
-        g.style.left = '-9999px';
-        g.style.top  = '-9999px';
-
-        document.addEventListener('mousemove', _dragMove);
-        document.addEventListener('mouseup',   _dragEnd);
-    });
+    card.addEventListener('click', () => applyDrawable(card.dataset.id, parseInt(card.dataset.drawable)));
 }
 
 // ─── Kleidung anwenden ────────────────────────────────────────────────────────
@@ -465,7 +363,7 @@ function buildCategoryNav() {
     nav.appendChild(faceBtn);
 }
 
-// ─── Klick auf Equip-Slots (Drop wird durch _dragEnd behandelt) ──────────────
+// ─── Klick auf Equip-Slots ────────────────────────────────────────────
 function setupEquipSlotDropTargets() {
     document.querySelectorAll('.equip-slot').forEach(slot => {
         slot.addEventListener('click', () => selectCategory(slot.dataset.slot));
