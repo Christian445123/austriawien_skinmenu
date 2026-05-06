@@ -401,141 +401,118 @@ AddEventHandler('austriawien_skinmenu:openForTarget', function()
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
-local skinLoaded      = false  -- verhindert Doppel-Load innerhalb einer Session
-local isFirstLogin    = false  -- wird vom Server gesetzt wenn kein Skin in DB
+local skinLoaded  = false  -- verhindert Doppel-Load innerhalb einer Session
+local menuOpened  = false  -- verhindert doppeltes Öffnen nach charCreated
 
--- Zwei-Flag-System für zr-identity: charCreated kann BEFORE oder AFTER applySkin ankommen.
--- Menü öffnet sobald BEIDE Flags gesetzt sind.
-local zrCharCreated   = false  -- gesetzt wenn charCreated Event empfangen
-local zrPendingMenu   = false  -- gesetzt wenn applySkin(firstLogin=true) für zr-identity empfangen
-local zrMenuOpened    = false  -- verhindert doppeltes Öffnen
-
-local function zrTryOpen()
-    if zrCharCreated and zrPendingMenu and not zrMenuOpened then
-        zrMenuOpened = true
-        dbg('zrTryOpen: beide Flags gesetzt → öffne Skin-Menü')
-        CreateThread(function()
-            Wait(800)
-            openSkinMenu()
-        end)
+-- ─── zr-identity: Charakter wurde erstellt ────────────────────────────────
+-- Wird von zr-build-c.lua via TriggerEvent gefeuert wenn der Charakter fertig ist.
+-- Öffnet das Skin-Menü direkt – kein Flag-Koordinations-System benötigt.
+AddEventHandler('austriawien_skinmenu:charCreated', function()
+    dbg('charCreated empfangen | isMenuOpen=%s | menuOpened=%s', tostring(isMenuOpen), tostring(menuOpened))
+    if menuOpened or isMenuOpen then
+        dbg('charCreated: Menü bereits offen/geöffnet, überspringe')
+        return
     end
-end
-
--- Lokales Event von zr-identity (TriggerEvent)
-AddEventHandler('austriawien_skinmenu:charCreated', function()
-    dbg('charCreated empfangen | zrPendingMenu=%s', tostring(zrPendingMenu))
-    zrCharCreated = true
-    zrTryOpen()
-end)
--- Net-Event Variante (TriggerClientEvent vom Server)
-RegisterNetEvent('austriawien_skinmenu:charCreated')
-AddEventHandler('austriawien_skinmenu:charCreated', function()
-    dbg('charCreated (net) empfangen | zrPendingMenu=%s', tostring(zrPendingMenu))
-    zrCharCreated = true
-    zrTryOpen()
+    menuOpened = true
+    dbg('charCreated: öffne Skin-Menü in 1200ms...')
+    CreateThread(function()
+        Wait(1200)
+        dbg('charCreated: öffne Menü jetzt')
+        openSkinMenu()
+    end)
 end)
 
 RegisterNetEvent('austriawien_skinmenu:applySkin')
 AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
-    dbg('applySkin empfangen | firstLogin=%s | json-länge=%d', tostring(firstLogin), skinJson and #skinJson or 0)
+    dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
 
     if firstLogin then
-        -- Erstes Login: Menü erst öffnen wenn Charakter-Erstellung abgeschlossen
-        if Config.FirstTimeSetup then
-            dbg('Erster Login erkannt | IdentityResource=%s', tostring(Config.IdentityResource))
+        -- Kein Skin in DB → Menü öffnen sobald der Charakter bereit ist
+        if not Config.FirstTimeSetup then
+            dbg('FirstTimeSetup deaktiviert, überspringe')
+            return
+        end
 
-            local ir = Config.IdentityResource or ''
+        local ir = Config.IdentityResource or ''
+        dbg('Erster Login | ir=%s', ir)
 
-            if ir == 'esx_identity' then
-                -- ── esx_identity: warte auf Client-seitigen closeMenu Event ──────
-                dbg('Warte auf esx_identity:closeMenu ...')
-                local opened = false
-                local handler
-                handler = AddEventHandler('esx_identity:closeMenu', function()
-                    if not opened then
-                        opened = true
-                        RemoveEventHandler(handler)
-                        dbg('esx_identity:closeMenu empfangen → öffne Skin-Menü')
-                        Wait(400)
-                        openSkinMenu()
-                    end
-                end)
-                -- Fallback nach 10 Min
-                CreateThread(function()
-                    local deadline = GetGameTimer() + 600000
-                    while not opened and GetGameTimer() < deadline do Wait(2000) end
-                    if not opened then
-                        opened = true
-                        pcall(function() RemoveEventHandler(handler) end)
-                        dbg('Fallback: esx_identity:closeMenu nie empfangen – öffne trotzdem')
-                        openSkinMenu()
-                    end
-                end)
-
-            elseif ir == 'zr-identity' then
-                -- ── zr-identity: KEIN Reset von zrCharCreated! ──────────────────
-                -- charCreated könnte schon VORHER angekommen sein → Flag behalten.
-                dbg('zr-identity: setze zrPendingMenu=true | zrCharCreated=%s', tostring(zrCharCreated))
-                zrMenuOpened  = false
-                zrPendingMenu = true
-                zrTryOpen()  -- falls charCreated schon vorher ankam
-                -- Fallback nach 5 Min
-                CreateThread(function()
-                    local deadline = GetGameTimer() + 300000
-                    while not zrMenuOpened and GetGameTimer() < deadline do Wait(500) end
-                    if not zrMenuOpened then
-                        zrMenuOpened = true
-                        dbg('Fallback: charCreated nie empfangen – öffne trotzdem')
-                        openSkinMenu()
-                    end
-                end)
-
-            else
-                -- ── Kein Identity-Resource → direkt nach Spawn öffnen ─────────────
-                CreateThread(function()
-                    local deadline = GetGameTimer() + 10000
-                    repeat Wait(200)
-                    until (IsScreenFadedIn() and not IsEntityDead(PlayerPedId())) or GetGameTimer() > deadline
-                    dbg('Ped bereit – öffne Skin-Menü (kein Identity-Resource)')
+        if ir == 'zr-identity' then
+            -- charCreated-Handler öffnet das Menü direkt → hier nichts tun
+            -- Falls charCreated nie ankommt: Fallback nach 3 Minuten
+            dbg('zr-identity: warte auf charCreated-Event (Fallback: 3 Min)')
+            CreateThread(function()
+                local deadline = GetGameTimer() + 180000
+                while not menuOpened and GetGameTimer() < deadline do
                     Wait(500)
+                end
+                if not menuOpened and not isMenuOpen then
+                    menuOpened = true
+                    dbg('FALLBACK: charCreated nie empfangen → öffne Menü trotzdem')
                     openSkinMenu()
-                end)
-            end
+                end
+            end)
+
+        elseif ir == 'esx_identity' then
+            dbg('esx_identity: warte auf closeMenu-Event')
+            local opened = false
+            local handler
+            handler = AddEventHandler('esx_identity:closeMenu', function()
+                if not opened then
+                    opened = true
+                    RemoveEventHandler(handler)
+                    dbg('esx_identity:closeMenu → öffne Menü')
+                    Wait(400)
+                    openSkinMenu()
+                end
+            end)
+            CreateThread(function()
+                local deadline = GetGameTimer() + 600000
+                while not opened and GetGameTimer() < deadline do Wait(2000) end
+                if not opened then
+                    opened = true
+                    pcall(function() RemoveEventHandler(handler) end)
+                    dbg('FALLBACK: esx_identity:closeMenu nie empfangen')
+                    openSkinMenu()
+                end
+            end)
+
+        else
+            -- Kein Identity-System → direkt nach Spawn öffnen
+            CreateThread(function()
+                local deadline = GetGameTimer() + 10000
+                repeat Wait(300)
+                until (IsScreenFadedIn() and not IsEntityDead(PlayerPedId())) or GetGameTimer() > deadline
+                Wait(500)
+                dbg('Kein Identity-System → Menü öffnen')
+                openSkinMenu()
+            end)
         end
         return
     end
 
-    if not skinJson or skinJson == '' then
-        dbg('Leeres skinJson empfangen, ignoriere')
-        return
-    end
-
+    -- Normaler Skin vorhanden → anwenden
+    if not skinJson or skinJson == '' then return end
     local skin = json.decode(skinJson)
     if skin then
-        dbg('Skin wird angewendet')
+        dbg('Skin anwenden')
         applySkin(skin)
     else
-        dbg('FEHLER: json.decode fehlgeschlagen!')
+        dbg('FEHLER: json.decode fehlgeschlagen')
     end
 end)
 
--- Skin nur beim tatsächlichen Spawn laden (Ped existiert hier bereits)
+-- Skin beim Spawn laden
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
     if not skinLoaded then
         skinLoaded = true
-        dbg('Sende loadSkin an Server')
         TriggerServerEvent('austriawien_skinmenu:loadSkin')
-    else
-        dbg('Skin bereits geladen, überspringe loadSkin')
     end
 end)
 
--- Beim erneuten Joinen (Reconnect) alle Flags zurücksetzen
+-- Reset beim (Re)Connect
 AddEventHandler('esx:playerLoaded', function()
-    dbg('esx:playerLoaded – setze Flags zurück')
-    skinLoaded    = false
-    zrCharCreated = false
-    zrPendingMenu = false
-    zrMenuOpened  = false
+    dbg('esx:playerLoaded → Flags reset')
+    skinLoaded = false
+    menuOpened = false
 end)
