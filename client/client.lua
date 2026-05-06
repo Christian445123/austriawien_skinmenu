@@ -41,7 +41,7 @@ local SLOTS = {
     { id = 'decal',       type = 'component', index = 10, label = 'Abzeichen',   icon = '🏷',  zone = 'torso' },
     { id = 'bag',         type = 'component', index = 5,  label = 'Tasche',      icon = '🎒', zone = 'torso' },
     { id = 'legs',        type = 'component', index = 4,  label = 'Hose',        icon = '👖', zone = 'legs'  },
-    { id = 'shoes',       type = 'component', index = 6,  label = 'Schuhe',      icon = '👟', zone = 'legs'  },
+    { id = 'shoes',       type = 'component', index = 6,  label = 'Schuhe',      icon = '👟', zone = 'shoes' },
     { id = 'watch',       type = 'prop',      index = 6,  label = 'Uhr',         icon = '⌚', zone = 'hands' },
     { id = 'bracelet',    type = 'prop',      index = 7,  label = 'Armband',     icon = '📿', zone = 'hands' },
 }
@@ -324,21 +324,26 @@ RegisterNUICallback('getTextureCount', function(data, cb)
 end)
 
 -- Kamera-Fokus pro Zone anpassen
+-- pos.z in GTA V = Fußhöhe des Peds (Boden). Charakter ≈ 1.8m groß.
 local ZONE_CAM = {
-    head   = { height = 0.65, lookAt = 0.65, fov = 40.0 },
-    face   = { height = 0.65, lookAt = 0.65, fov = 40.0 },
-    torso  = { height = 0.45, lookAt = 0.45, fov = 45.0 },
-    legs   = { height = -0.1, lookAt = 0.0,  fov = 50.0 },
-    hands  = { height = 0.35, lookAt = 0.35, fov = 45.0 },
+    head   = { height = 1.65, lookAt = 1.60, fov = 35.0 },  -- Kopfhöhe
+    face   = { height = 1.65, lookAt = 1.60, fov = 30.0 },  -- Gesicht, enger
+    torso  = { height = 0.50, lookAt = 0.50, fov = 45.0 },  -- Brust (= Default)
+    hands  = { height = 0.70, lookAt = 0.65, fov = 42.0 },  -- Handgelenke
+    legs   = { height = 0.30, lookAt = 0.05, fov = 40.0 },  -- Unterschenkel → Knie
+    shoes  = { height = 0.10, lookAt = -0.05, fov = 38.0 }, -- Schuhe (ganz unten)
 }
 
 local function setCameraZone(zone)
     if not cam or not DoesCamExist(cam) then return end
-    local cfg = ZONE_CAM[zone] or ZONE_CAM['torso']
-    local ped = PlayerPedId()
-    local pos = GetEntityCoords(ped)
-    local x   = pos.x + Config.CameraDistance * math.sin(math.rad(camAngle))
-    local y   = pos.y + Config.CameraDistance * math.cos(math.rad(camAngle))
+    local cfg         = ZONE_CAM[zone] or ZONE_CAM['torso']
+    local ped         = PlayerPedId()
+    local pos         = GetEntityCoords(ped)
+    local sideOffset  = Config.CameraSideOffset or -0.3
+    local sinA        = math.sin(math.rad(camAngle))
+    local cosA        = math.cos(math.rad(camAngle))
+    local x           = pos.x + Config.CameraDistance * sinA + sideOffset * cosA
+    local y           = pos.y + Config.CameraDistance * cosA - sideOffset * sinA
     SetCamCoord(cam, x, y, pos.z + cfg.height)
     PointCamAtCoord(cam, pos.x, pos.y, pos.z + cfg.lookAt)
     SetCamFov(cam, cfg.fov)
