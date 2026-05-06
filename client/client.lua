@@ -323,6 +323,32 @@ RegisterNUICallback('getTextureCount', function(data, cb)
     cb({ maxTexture = max })
 end)
 
+-- Kamera-Fokus pro Zone anpassen
+local ZONE_CAM = {
+    head   = { height = 0.65, lookAt = 0.65, fov = 40.0 },
+    face   = { height = 0.65, lookAt = 0.65, fov = 40.0 },
+    torso  = { height = 0.45, lookAt = 0.45, fov = 45.0 },
+    legs   = { height = -0.1, lookAt = 0.0,  fov = 50.0 },
+    hands  = { height = 0.35, lookAt = 0.35, fov = 45.0 },
+}
+
+local function setCameraZone(zone)
+    if not cam or not DoesCamExist(cam) then return end
+    local cfg = ZONE_CAM[zone] or ZONE_CAM['torso']
+    local ped = PlayerPedId()
+    local pos = GetEntityCoords(ped)
+    local x   = pos.x + Config.CameraDistance * math.sin(math.rad(camAngle))
+    local y   = pos.y + Config.CameraDistance * math.cos(math.rad(camAngle))
+    SetCamCoord(cam, x, y, pos.z + cfg.height)
+    PointCamAtCoord(cam, pos.x, pos.y, pos.z + cfg.lookAt)
+    SetCamFov(cam, cfg.fov)
+end
+
+RegisterNUICallback('focusZone', function(data, cb)
+    setCameraZone(data.zone or 'torso')
+    cb({})
+end)
+
 -- Kamera drehen
 RegisterNUICallback('rotateCamera', function(data, cb)
     camAngle = camAngle + (data.direction == 'left' and -20.0 or 20.0)

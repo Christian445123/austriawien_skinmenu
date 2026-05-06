@@ -341,6 +341,11 @@ function selectCategory(catId) {
         s.classList.toggle('active', s.dataset.slot === catId);
     });
 
+    // Kamera-Fokus: Zone an Lua melden
+    const slot = state.slotDefs.find(s => s.id === catId);
+    const zone = slot ? slot.zone : (catId === 'face' ? 'head' : 'torso');
+    nuiCallback('focusZone', { zone });
+
     if (catId === 'face') {
         document.getElementById('view-items').classList.remove('active');
         document.getElementById('view-face').classList.add('active');

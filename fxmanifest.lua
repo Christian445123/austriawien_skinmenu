@@ -24,13 +24,7 @@ ui_page 'html/index.html'
 files {
     'html/index.html',
     'html/css/style.css',
-    'html/js/app.js',
-
-    -- Vorschau-Bilder: html/img/{slotId}/{drawableId}.{png|jpg|webp}
-    -- Alle Unterordner werden automatisch eingebunden.
-    'html/img/**/*.png',
-    'html/img/**/*.jpg',
-    'html/img/**/*.webp'
+    'html/js/app.js'
 }
 
 lua54 'yes'

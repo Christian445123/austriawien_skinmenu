@@ -5,51 +5,29 @@ local RESOURCE_VERSION = '1.0.3'
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
 -- ─── Startbanner ─────────────────────────────────────────────────────────────
-local function printBanner(updateLine)
-    local W = '^5'  -- Cyan/Lila für Rahmen
-    local T = '^3'  -- Gelb für Text
-    local R = '^7'  -- Reset
-    local G = '^2'  -- Grün
-    print(W .. '##########################################################' .. R)
-    print(W .. '##' .. R)
-    print(W .. '##  ' .. T .. '   _____           _        _        _      ' .. W .. '  ##' .. R)
-    print(W .. '##  ' .. T .. '  / ___ \\         | |      (_)      | |     ' .. W .. '  ##' .. R)
-    print(W .. '##  ' .. T .. ' | |   | | _   _  | |_  _  _   __ _| |     ' .. W .. '  ##' .. R)
-    print(W .. '##  ' .. T .. ' | |   | || | | | | __|| || | / _` | |     ' .. W .. '  ##' .. R)
-    print(W .. '##  ' .. T .. ' | |___| || |_| | | |_ | || || (_| |_|     ' .. W .. '  ##' .. R)
-    print(W .. '##  ' .. T .. '  \\_____/  \\__,_|  \\__||_||_| \\__,_(_)     ' .. W .. '  ##' .. R)
-    print(W .. '##' .. R)
-    print(W .. '##  ' .. G .. ' AustriaWien – Skin Menu' .. R .. '  |  Version ' .. T .. RESOURCE_VERSION .. R .. '       ' .. W .. '  ##' .. R)
-    print(W .. '##  ' .. updateLine .. R)
-    print(W .. '##' .. R)
-    print(W .. '##########################################################' .. R)
-end
-
-CreateThread(function()
-    Wait(2000)
-    PerformHttpRequest(
-        'https://api.github.com/repos/AustriaWienDev/austriawien_skinmenu/releases/latest',
-        function(code, body, headers)
-            local updateLine
-            if code == 200 and body then
-                local ok, data = pcall(json.decode, body)
-                if ok and data and data.tag_name then
-                    local latest = tostring(data.tag_name):gsub('^v', '')
-                    if latest == RESOURCE_VERSION then
-                        updateLine = '^2  ✔  Aktuell – Version ' .. RESOURCE_VERSION .. ' ist die neueste.'
-                    else
-                        updateLine = '^1  ⚠  Update verfügbar! Aktuell: ' .. RESOURCE_VERSION .. ' → Neu: ' .. latest
-                    end
-                else
-                    updateLine = '^3  ?  Versionscheck konnte nicht gelesen werden.'
-                end
-            else
-                updateLine = '^3  ?  Versionscheck nicht erreichbar (offline?).'
-            end
-            printBanner(updateLine)
-        end,
-        'GET', '', { ['User-Agent'] = 'FiveM-AWskin' }
-    )
+AddEventHandler('onResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    local R = '^7'
+    local T = '^1'
+    local D = '^8'
+    local G = '^2'
+    print(R)
+    print(T .. "        d8888                   888            d8b        888       888 d8b" .. R)
+    print(T .. "       d88888                   888            Y8P        888   o   888 Y8P" .. R)
+    print(T .. "      d88P888                   888                       888  d8b  888    " .. R)
+    print(T .. "     d88P 888 888  888 .d8888b  888888 888d888 888  8888b 888 d888b 888 888  .d88b.  88888b." .. R)
+    print(T .. "    d88P  888 888  888 88K      888    888P    888     88b 888d8P888888 888 d8P  Y8b 888  88b" .. R)
+    print(T .. "   d88P   888 888  888  Y8888b. 888    888     888 .d888888 8888P Y88888 888 88888888 888  888" .. R)
+    print(T .. "  d8888888888 Y88b 888      X88 Y88b.  888     888 888  888 888P   Y8888 888 Y8b.     888  888" .. R)
+    print(T .. " d88P     888   Y88888  88888P   Y888  888     888  Y888888 888P    Y888 888   Y8888  888  888" .. R)
+    print(R)
+    print(D .. " ##########################################################################" .. R)
+    print(D .. " ##                                                                      ##" .. R)
+    print(D .. " ##  ^7Skin Menu        " .. T .. "AustriaWien Midcore" .. D .. "       by GamingDevelopment  ##" .. R)
+    print(D .. " ##  ^7Version  " .. G .. RESOURCE_VERSION .. D .. "                                              ##" .. R)
+    print(D .. " ##                                                                      ##" .. R)
+    print(D .. " ##########################################################################" .. R)
+    print(R)
 end)
 
 -- ─── Debug-Helper ────────────────────────────────────────────────────────────
