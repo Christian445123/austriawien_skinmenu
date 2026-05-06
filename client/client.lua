@@ -401,107 +401,9 @@ AddEventHandler('austriawien_skinmenu:openForTarget', function()
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
-local skinLoaded  = false  -- verhindert Doppel-Load innerhalb einer Session
-local menuOpened  = false  -- verhindert doppeltes Öffnen nach charCreated
+local skinLoaded = false  -- verhindert Doppel-Load innerhalb einer Session
 
--- ─── zr-identity: Charakter wurde erstellt ────────────────────────────────
--- Wird von zr-build-c.lua via TriggerEvent gefeuert wenn der Charakter fertig ist.
--- Öffnet das Skin-Menü direkt – kein Flag-Koordinations-System benötigt.
-AddEventHandler('austriawien_skinmenu:charCreated', function()
-    dbg('charCreated empfangen | isMenuOpen=%s | menuOpened=%s', tostring(isMenuOpen), tostring(menuOpened))
-    if menuOpened or isMenuOpen then
-        dbg('charCreated: Menü bereits offen/geöffnet, überspringe')
-        return
-    end
-    menuOpened = true
-    dbg('charCreated: öffne Skin-Menü in 1200ms...')
-    CreateThread(function()
-        Wait(1200)
-        dbg('charCreated: öffne Menü jetzt')
-        openSkinMenu()
-    end)
-end)
-
-RegisterNetEvent('austriawien_skinmenu:applySkin')
-AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
-    dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
-
-    if firstLogin then
-        -- Kein Skin in DB → Menü öffnen sobald der Charakter bereit ist
-        if not Config.FirstTimeSetup then
-            dbg('FirstTimeSetup deaktiviert, überspringe')
-            return
-        end
-
-        local ir = Config.IdentityResource or ''
-        dbg('Erster Login | ir=%s', ir)
-
-        if ir == 'zr-identity' then
-            -- charCreated-Handler öffnet das Menü direkt → hier nichts tun
-            -- Falls charCreated nie ankommt: Fallback nach 3 Minuten
-            dbg('zr-identity: warte auf charCreated-Event (Fallback: 3 Min)')
-            CreateThread(function()
-                local deadline = GetGameTimer() + 180000
-                while not menuOpened and GetGameTimer() < deadline do
-                    Wait(500)
-                end
-                if not menuOpened and not isMenuOpen then
-                    menuOpened = true
-                    dbg('FALLBACK: charCreated nie empfangen → öffne Menü trotzdem')
-                    openSkinMenu()
-                end
-            end)
-
-        elseif ir == 'esx_identity' then
-            dbg('esx_identity: warte auf closeMenu-Event')
-            local opened = false
-            local handler
-            handler = AddEventHandler('esx_identity:closeMenu', function()
-                if not opened then
-                    opened = true
-                    RemoveEventHandler(handler)
-                    dbg('esx_identity:closeMenu → öffne Menü')
-                    Wait(400)
-                    openSkinMenu()
-                end
-            end)
-            CreateThread(function()
-                local deadline = GetGameTimer() + 600000
-                while not opened and GetGameTimer() < deadline do Wait(2000) end
-                if not opened then
-                    opened = true
-                    pcall(function() RemoveEventHandler(handler) end)
-                    dbg('FALLBACK: esx_identity:closeMenu nie empfangen')
-                    openSkinMenu()
-                end
-            end)
-
-        else
-            -- Kein Identity-System → direkt nach Spawn öffnen
-            CreateThread(function()
-                local deadline = GetGameTimer() + 10000
-                repeat Wait(300)
-                until (IsScreenFadedIn() and not IsEntityDead(PlayerPedId())) or GetGameTimer() > deadline
-                Wait(500)
-                dbg('Kein Identity-System → Menü öffnen')
-                openSkinMenu()
-            end)
-        end
-        return
-    end
-
-    -- Normaler Skin vorhanden → anwenden
-    if not skinJson or skinJson == '' then return end
-    local skin = json.decode(skinJson)
-    if skin then
-        dbg('Skin anwenden')
-        applySkin(skin)
-    else
-        dbg('FEHLER: json.decode fehlgeschlagen')
-    end
-end)
-
--- Skin beim Spawn laden
+-- Skin laden wenn der Charakter gespawnt ist
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
     if not skinLoaded then
@@ -510,9 +412,29 @@ AddEventHandler('esx:onPlayerSpawn', function()
     end
 end)
 
+-- Skin vom Server empfangen und anwenden
+-- firstLogin=true bedeutet kein Eintrag in DB → zr_player_created() öffnet das Menü via /awskin
+RegisterNetEvent('austriawien_skinmenu:applySkin')
+AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
+    dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
+    if firstLogin then
+        -- Erster Login: zr_player_created() in zr-build-c.lua
+        -- triggert automatisch ExecuteCommand('awskin') nach der Charaktererstellung.
+        -- Kein weiterer Code hier nötig.
+        dbg('Erster Login – warte auf ExecuteCommand(awskin) von zr-identity')
+        return
+    end
+    if not skinJson or skinJson == '' then return end
+    local skin = json.decode(skinJson)
+    if skin then
+        applySkin(skin)
+    else
+        dbg('FEHLER: json.decode fehlgeschlagen')
+    end
+end)
+
 -- Reset beim (Re)Connect
 AddEventHandler('esx:playerLoaded', function()
     dbg('esx:playerLoaded → Flags reset')
     skinLoaded = false
-    menuOpened = false
 end)
