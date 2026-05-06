@@ -1,7 +1,56 @@
 local ESX = nil
+local RESOURCE_VERSION = '1.0.3'
 
 -- ─── ESX holen ───────────────────────────────────────────────────────────────
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+
+-- ─── Startbanner ─────────────────────────────────────────────────────────────
+local function printBanner(updateLine)
+    local W = '^5'  -- Cyan/Lila für Rahmen
+    local T = '^3'  -- Gelb für Text
+    local R = '^7'  -- Reset
+    local G = '^2'  -- Grün
+    print(W .. '##########################################################' .. R)
+    print(W .. '##' .. R)
+    print(W .. '##  ' .. T .. '   _____           _        _        _      ' .. W .. '  ##' .. R)
+    print(W .. '##  ' .. T .. '  / ___ \\         | |      (_)      | |     ' .. W .. '  ##' .. R)
+    print(W .. '##  ' .. T .. ' | |   | | _   _  | |_  _  _   __ _| |     ' .. W .. '  ##' .. R)
+    print(W .. '##  ' .. T .. ' | |   | || | | | | __|| || | / _` | |     ' .. W .. '  ##' .. R)
+    print(W .. '##  ' .. T .. ' | |___| || |_| | | |_ | || || (_| |_|     ' .. W .. '  ##' .. R)
+    print(W .. '##  ' .. T .. '  \\_____/  \\__,_|  \\__||_||_| \\__,_(_)     ' .. W .. '  ##' .. R)
+    print(W .. '##' .. R)
+    print(W .. '##  ' .. G .. ' AustriaWien – Skin Menu' .. R .. '  |  Version ' .. T .. RESOURCE_VERSION .. R .. '       ' .. W .. '  ##' .. R)
+    print(W .. '##  ' .. updateLine .. R)
+    print(W .. '##' .. R)
+    print(W .. '##########################################################' .. R)
+end
+
+CreateThread(function()
+    Wait(2000)
+    PerformHttpRequest(
+        'https://api.github.com/repos/AustriaWienDev/austriawien_skinmenu/releases/latest',
+        function(code, body, headers)
+            local updateLine
+            if code == 200 and body then
+                local ok, data = pcall(json.decode, body)
+                if ok and data and data.tag_name then
+                    local latest = tostring(data.tag_name):gsub('^v', '')
+                    if latest == RESOURCE_VERSION then
+                        updateLine = '^2  ✔  Aktuell – Version ' .. RESOURCE_VERSION .. ' ist die neueste.'
+                    else
+                        updateLine = '^1  ⚠  Update verfügbar! Aktuell: ' .. RESOURCE_VERSION .. ' → Neu: ' .. latest
+                    end
+                else
+                    updateLine = '^3  ?  Versionscheck konnte nicht gelesen werden.'
+                end
+            else
+                updateLine = '^3  ?  Versionscheck nicht erreichbar (offline?).'
+            end
+            printBanner(updateLine)
+        end,
+        'GET', '', { ['User-Agent'] = 'FiveM-AWskin' }
+    )
+end)
 
 -- ─── Debug-Helper ────────────────────────────────────────────────────────────
 local function dbg(msg, ...)

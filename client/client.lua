@@ -401,9 +401,9 @@ AddEventHandler('austriawien_skinmenu:openForTarget', function()
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────
-local skinLoaded = false  -- verhindert Doppel-Load innerhalb einer Session
+local skinLoaded = false
 
--- Skin laden wenn der Charakter gespawnt ist
+-- Skin beim Spawn laden (genau wie esx_skin es macht)
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
     if not skinLoaded then
@@ -412,16 +412,17 @@ AddEventHandler('esx:onPlayerSpawn', function()
     end
 end)
 
--- Skin vom Server empfangen und anwenden
--- firstLogin=true bedeutet kein Eintrag in DB → zr_player_created() öffnet das Menü via /awskin
+-- Server antwortet mit Skin-Daten
 RegisterNetEvent('austriawien_skinmenu:applySkin')
 AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
     if firstLogin then
-        -- Erster Login: zr_player_created() in zr-build-c.lua
-        -- triggert automatisch ExecuteCommand('awskin') nach der Charaktererstellung.
-        -- Kein weiterer Code hier nötig.
-        dbg('Erster Login – warte auf ExecuteCommand(awskin) von zr-identity')
+        -- Kein Skin in DB → Menü direkt öffnen (genau wie esx_skin:openSaveableMenu)
+        dbg('Erster Login → öffne AWskin-Menü')
+        CreateThread(function()
+            Wait(500)
+            openSkinMenu()
+        end)
         return
     end
     if not skinJson or skinJson == '' then return end
@@ -435,6 +436,6 @@ end)
 
 -- Reset beim (Re)Connect
 AddEventHandler('esx:playerLoaded', function()
-    dbg('esx:playerLoaded → Flags reset')
+    dbg('esx:playerLoaded → reset')
     skinLoaded = false
 end)
