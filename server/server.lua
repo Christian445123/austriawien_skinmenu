@@ -10,19 +10,46 @@ local function dbg(msg, ...)
     end
 end
 
--- ─── Lizenz-Check beim Ressourcenstart ───────────────────────────────────────
+-- ─── Lizenz-Prüfung beim Ressourcenstart ─────────────────────────────────────
+-- Gültiger Schlüssel (hier vom Script-Autor festgelegt)
+local VALID_LICENSE_KEY = 'AW-SKIN-2026-MIDCORE'
+
 AddEventHandler('onResourceStart', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
+
+    if not Config.CheckLicense then
+        print('^2[AWskin] Resource gestartet. ^3(Lizenz-Pruefung deaktiviert)^7')
+        return
+    end
+
     local key = Config.LicenseKey or ''
-    if key == '' then
-        print('^1[AWskin] FEHLER: Kein Lizenzschluessel gesetzt!^7')
-        print('^1[AWskin] Trage Config.LicenseKey in config.lua ein.^7')
-        print('^1[AWskin] Die Resource wird jetzt gestoppt.^7')
-        Wait(3000)
+    if key ~= VALID_LICENSE_KEY then
+        print('^1')
+        print('^1  ╔══════════════════════════════════════════════════════════╗')
+        print('^1  ║        AUSTRIAWIEN SKINMENU  –  UNGUELTIGE LIZENZ       ║')
+        print('^1  ╠══════════════════════════════════════════════════════════╣')
+        print('^1  ║  Der eingetragene Schluessel ist nicht gueltig.         ║')
+        print('^1  ║                                                         ║')
+        print('^1  ║  Trage den korrekten Schluessel in config.lua ein:      ║')
+        print('^1  ║    Config.LicenseKey = "AW-SKIN-2026-MIDCORE"           ║')
+        print('^1  ║                                                         ║')
+        print('^1  ║  Pruefung deaktivieren (fuer Entwicklung):              ║')
+        print('^1  ║    Config.CheckLicense = false                          ║')
+        print('^1  ╚══════════════════════════════════════════════════════════╝')
+        print('^1  Die Resource wird in 5 Sekunden gestoppt...^7')
+        Wait(5000)
         StopResource(GetCurrentResourceName())
         return
     end
+
     print('^2[AWskin] Lizenz OK. Resource gestartet.^7')
+end)
+
+
+            Wait(5000)
+            StopResource(GetCurrentResourceName())
+        end
+    end, 'GET', '', { ['Content-Type'] = 'application/json' })
 end)
 
 -- ─── EUP-Bild-Scanner ────────────────────────────────────────────────────────

@@ -64,12 +64,6 @@ Config.ImageBasePath = 'img'
 -- Erste Übereinstimmung gewinnt.
 Config.ImageFormats = { 'png', 'jpg', 'webp' }
 
--- ─── Lizenz ──────────────────────────────────────────────────────────────────
--- Registriere diese Resource auf keymaster.fivem.net und trage den
--- Schlüssel hier ein. Ohne gültigen Schlüssel startet die Resource NICHT.
--- Beispiel: Config.LicenseKey = 'ABCD-1234-EFGH-5678'
-Config.LicenseKey = ''
-
 -- ─── EUP-Packs (automatische Bildauslese) ────────────────────────────────────
 -- Liste der Resource-Namen, deren img/-Ordner nach Vorschaubildern
 -- durchsucht werden soll. Bilder müssen unter
@@ -79,3 +73,11 @@ Config.LicenseKey = ''
 -- Beispiel: Config.EUPResources = { 'eup-stream', 'eup-sp' }
 Config.EUPResources = {}
 
+-- ─── Lizenz-Prüfung ──────────────────────────────────────────────────────────
+-- false = Prüfung deaktiviert (Standard, für Entwicklung/Test)
+-- true  = Resource stoppt beim Start wenn kein gültiger Schlüssel gesetzt ist
+Config.CheckLicense = false
+
+-- Lizenzschlüssel für diese Resource.
+-- Trage den korrekten Schlüssel ein wenn Config.CheckLicense = true gesetzt ist.
+Config.LicenseKey = 'AW-SKIN-2026-MIDCORE'
