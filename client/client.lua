@@ -415,16 +415,22 @@ local function zrTryOpen()
         zrMenuOpened = true
         dbg('zrTryOpen: beide Flags gesetzt → öffne Skin-Menü')
         CreateThread(function()
-            Wait(400)
+            Wait(800)
             openSkinMenu()
         end)
     end
 end
 
--- RegisterNetEvent damit der Handler auch auf Server→Client TriggerClientEvent reagiert
-RegisterNetEvent('austriawien_skinmenu:charCreated')
+-- Lokales Event von zr-identity (TriggerEvent)
 AddEventHandler('austriawien_skinmenu:charCreated', function()
     dbg('charCreated empfangen | zrPendingMenu=%s', tostring(zrPendingMenu))
+    zrCharCreated = true
+    zrTryOpen()
+end)
+-- Net-Event Variante (TriggerClientEvent vom Server)
+RegisterNetEvent('austriawien_skinmenu:charCreated')
+AddEventHandler('austriawien_skinmenu:charCreated', function()
+    dbg('charCreated (net) empfangen | zrPendingMenu=%s', tostring(zrPendingMenu))
     zrCharCreated = true
     zrTryOpen()
 end)
@@ -467,17 +473,16 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
                 end)
 
             elseif ir == 'zr-identity' then
-                -- ── zr-identity: charCreated Handler ist bereits auf Modul-Ebene ──
-                -- Hier nur das Flag setzen; der Handler oben ruft zrTryOpen() auf.
-                dbg('zr-identity: setze zrPendingMenu=true')
-                zrCharCreated = false  -- Reset für diesen Login-Zyklus
+                -- ── zr-identity: KEIN Reset von zrCharCreated! ──────────────────
+                -- charCreated könnte schon VORHER angekommen sein → Flag behalten.
+                dbg('zr-identity: setze zrPendingMenu=true | zrCharCreated=%s', tostring(zrCharCreated))
                 zrMenuOpened  = false
                 zrPendingMenu = true
                 zrTryOpen()  -- falls charCreated schon vorher ankam
-                -- Fallback nach 10 Min
+                -- Fallback nach 5 Min
                 CreateThread(function()
-                    local deadline = GetGameTimer() + 600000
-                    while not zrMenuOpened and GetGameTimer() < deadline do Wait(2000) end
+                    local deadline = GetGameTimer() + 300000
+                    while not zrMenuOpened and GetGameTimer() < deadline do Wait(500) end
                     if not zrMenuOpened then
                         zrMenuOpened = true
                         dbg('Fallback: charCreated nie empfangen – öffne trotzdem')
