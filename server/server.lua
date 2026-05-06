@@ -19,8 +19,8 @@ AddEventHandler('austriawien_skinmenu:debugLog', function(msg)
 end)
 
 -- ─── Lizenz-Prüfung beim Ressourcenstart ─────────────────────────────────────
--- Gültiger Schlüssel (hier vom Script-Autor festgelegt)
 local VALID_LICENSE_KEY = 'AW-SKIN-2026-MIDCORE'
+local licenseValid = false
 
 AddEventHandler('onResourceStart', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
@@ -28,24 +28,41 @@ AddEventHandler('onResourceStart', function(resourceName)
     local key = Config.LicenseKey or ''
     if key ~= VALID_LICENSE_KEY then
         print('^1')
-        print('^1  ╔══════════════════════════════════════════════════════════╗')
-        print('^1  ║        AUSTRIAWIEN SKINMENU  –  UNGUELTIGE LIZENZ       ║')
-        print('^1  ╠══════════════════════════════════════════════════════════╣')
-        print('^1  ║  Der eingetragene Schluessel ist nicht gueltig.         ║')
-        print('^1  ║                                                         ║')
-        print('^1  ║  Trage den vom Hersteller ausgegebenen Schluessel       ║')
-        print('^1  ║  in config.lua unter Config.LicenseKey ein.            ║')
-        print('^1  ╚══════════════════════════════════════════════════════════╝')
-        print('^1  Die Resource wird in 5 Sekunden gestoppt...^7')
-        local resName = GetCurrentResourceName()
-        SetTimeout(5000, function()
-            print('^1[AWskin] Stoppe Resource "' .. resName .. '"...^7')
-            StopResource(resName)
-        end)
-        return
+        print('^1  ################################################################')
+        print('^1  ##                                                            ##')
+        print('^1  ##   !!!!!!!!!   A C H T U N G   !!!!!!!!!                   ##')
+        print('^1  ##                                                            ##')
+        print('^1  ##   DER LIZENZSCHLUESSEL STIMMT NICHT UEBEREIN!             ##')
+        print('^1  ##                                                            ##')
+        print('^1  ##   Eingetragen : "' .. tostring(key) .. '"')
+        print('^1  ##   Erwartet    : gültiger AW-SKIN Schluessel               ##')
+        print('^1  ##                                                            ##')
+        print('^1  ##   Trage den korrekten Schluessel in config.lua ein:       ##')
+        print('^1  ##     Config.LicenseKey = "DEIN-SCHLUESSEL"                 ##')
+        print('^1  ##                                                            ##')
+        print('^1  ##   Die Resource wird in 5 Sekunden gestoppt!               ##')
+        print('^1  ##                                                            ##')
+        print('^1  ################################################################')
+        print('^1')
+        licenseValid = false
+    else
+        licenseValid = true
+        print('^2[AWskin] Lizenz OK. Resource gestartet.^7')
     end
+end)
 
-    print('^2[AWskin] Lizenz OK. Resource gestartet.^7')
+-- Wird auf Modul-Ebene gestartet – zuverlässiger als Thread in einem Event-Handler
+Citizen.CreateThread(function()
+    Citizen.Wait(500) -- warten bis onResourceStart ausgeführt wurde
+    if not licenseValid then
+        Citizen.Wait(5000)
+        print('^1  ################################################################')
+        print('^1  ##   STOPPE RESOURCE: ' .. GetCurrentResourceName())
+        print('^1  ################################################################')
+        print('^7')
+        StopResource(GetCurrentResourceName())
+        ExecuteCommand('stop ' .. GetCurrentResourceName())
+    end
 end)
 
 -- ─── Admin-Prüfung ───────────────────────────────────────────────────────────
