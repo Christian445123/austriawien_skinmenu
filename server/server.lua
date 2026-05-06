@@ -10,6 +10,14 @@ local function dbg(msg, ...)
     end
 end
 
+-- Client-Debug-Meldungen in der Serverkonsole ausgeben
+RegisterNetEvent('austriawien_skinmenu:debugLog')
+AddEventHandler('austriawien_skinmenu:debugLog', function(msg)
+    if Config.Debug then
+        print(tostring(msg))
+    end
+end)
+
 -- ─── Lizenz-Prüfung beim Ressourcenstart ─────────────────────────────────────
 -- Gültiger Schlüssel (hier vom Script-Autor festgelegt)
 local VALID_LICENSE_KEY = 'AW-SKIN-2026-MIDCORE'
@@ -30,8 +38,7 @@ AddEventHandler('onResourceStart', function(resourceName)
         print('^1  ╚══════════════════════════════════════════════════════════╝')
         print('^1  Die Resource wird in 5 Sekunden gestoppt...^7')
         local resName = GetCurrentResourceName()
-        CreateThread(function()
-            Wait(5000)
+        SetTimeout(5000, function()
             print('^1[AWskin] Stoppe Resource "' .. resName .. '"...^7')
             StopResource(resName)
         end)
@@ -39,64 +46,6 @@ AddEventHandler('onResourceStart', function(resourceName)
     end
 
     print('^2[AWskin] Lizenz OK. Resource gestartet.^7')
-end)
-
--- ─── EUP-Bild-Scanner ────────────────────────────────────────────────────────
-local eupManifest = {}
-
-local function scanEUPResource(resName)
-    local resPath = GetResourcePath(resName)
-    if not resPath or resPath == '' then
-        dbg('EUP scan: Resource "%s" nicht gefunden', resName)
-        return {}
-    end
-
-    local found  = {}
-    local imgDir = resPath .. '/img'
-
-    -- Prüfen ob Ordner existiert
-    local probe = io.open(imgDir .. '/.', 'r')
-    if not probe then
-        dbg('EUP scan: "%s/img" nicht gefunden, übersprungen', resName)
-        return {}
-    end
-    io.close(probe)
-
-    -- Windows: dir /b /s listet alle Dateien rekursiv
-    local cmd    = ('dir /b /s "%s" /a:-d 2>nul'):format(imgDir)
-    local handle = io.popen(cmd)
-    if not handle then return {} end
-
-    for line in handle:lines() do
-        -- Beispiel-Zeile: C:\server\resources\eup-stream\img\jacket\0.png
-        local slot, file = line:match('\\([^\\]+)\\([^\\]+%.%a+)$')
-        if slot and file then
-            local ext = file:match('%.(%a+)$')
-            local id  = tonumber(file:match('^(%d+)'))
-            if id and ext and (ext == 'png' or ext == 'jpg' or ext == 'webp') then
-                if not found[slot] then found[slot] = {} end
-                found[slot][#found[slot] + 1] = id
-            end
-        end
-    end
-    handle:close()
-    dbg('EUP scan "%s": %d Slots mit Bildern', resName, #found)
-    return found
-end
-
-CreateThread(function()
-    Wait(2000)  -- Warten bis alle Resources gestartet sind
-    eupManifest = {}
-    for _, resName in ipairs(Config.EUPResources or {}) do
-        eupManifest[resName] = scanEUPResource(resName)
-    end
-    dbg('EUP Manifest fertig (%d Ressourcen gescannt)', #(Config.EUPResources or {}))
-end)
-
--- ─── EUP Manifest an Client senden ───────────────────────────────────────────
-RegisterNetEvent('austriawien_skinmenu:getEUPManifest')
-AddEventHandler('austriawien_skinmenu:getEUPManifest', function()
-    TriggerClientEvent('austriawien_skinmenu:eupManifest', source, eupManifest)
 end)
 
 -- ─── Admin-Prüfung ───────────────────────────────────────────────────────────

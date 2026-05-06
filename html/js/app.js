@@ -43,7 +43,6 @@ const state = {
     hairColor2:      0,
     imageBasePath:   'img',
     imageFormats:    ['png'],
-    eupManifest:     {},     // EUP-Ressourcen Bildmanifest { resName: { slotId: [ids] } }
     faceData: {
         shapeFirst: 0, shapeSecond: 0, shapeMix: 0.5,
         skinFirst: 0,  skinSecond: 0,  skinMix:  0.5,
@@ -62,32 +61,12 @@ function imagePath(slotId, drawableId, format) {
 }
 
 /**
- * Gibt alle EUP-Bild-URLs für slot+drawable zurück (cfx-nui URLs).
- * Gibt leeres Array zurück wenn kein EUP Manifest vorhanden.
- */
-function eupImagePaths(slotId, drawableId) {
-    const manifest = state.eupManifest || {};
-    const paths = [];
-    for (const [resName, slots] of Object.entries(manifest)) {
-        if (slots[slotId] && slots[slotId].includes(drawableId)) {
-            for (const fmt of ['png', 'jpg', 'webp']) {
-                paths.push(`https://cfx-nui-${resName}/img/${slotId}/${drawableId}.${fmt}`);
-            }
-        }
-    }
-    return paths;
-}
-
-/**
  * Lädt das beste verfügbare Bild für eine Slot+Drawable Kombination.
- * Probiert erst lokale Formate, dann EUP-Ressourcen.
  * Gibt ein <img>-Element zurück – bei Fehler wird es ausgeblendet.
  */
 function createPreviewImage(slotId, drawableId, fallbackIcon) {
-    // Lokale Formate + EUP-URLs zusammenführen
     const formats = state.imageFormats.slice().map(f => imagePath(slotId, drawableId, f));
-    const eupPaths = eupImagePaths(slotId, drawableId);
-    const allPaths = [...formats, ...eupPaths];
+    const allPaths = [...formats];
 
     const img = document.createElement('img');
     img.className = 'item-card-img';
@@ -690,10 +669,6 @@ window.addEventListener('message', e => {
     switch (data.type) {
         case 'openMenu':
             openMenu(data);
-            break;
-        case 'eupManifest':
-            // EUP-Bilder Manifest empfangen: { resourceName: { slotId: [0,1,2,...] } }
-            state.eupManifest = data.manifest || {};
             break;
     }
 });

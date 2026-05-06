@@ -6,10 +6,11 @@ local savedSkin   = {}
 local currentSkin = {}
 
 -- ─── Debug-Helper ────────────────────────────────────────────────────────────
--- Debug-Ausgaben im FiveM-Client-Log (F8-Konsole)
+-- Debug-Ausgaben in der Serverkonsole (Live Console)
 local function dbg(msg, ...)
     if Config.Debug then
-        print(('^3[AWskin CLIENT]^7 ' .. tostring(msg)):format(...))
+        local formatted = ('^3[AWskin CLIENT]^7 ' .. tostring(msg)):format(...)
+        TriggerServerEvent('austriawien_skinmenu:debugLog', formatted)
     end
 end
 
@@ -249,8 +250,6 @@ local function openSkinMenu()
         imageBasePath = Config.ImageBasePath or 'img',
         imageFormats  = Config.ImageFormats  or { 'png' }
     })
-    -- EUP-Manifest asynchron nachliefern
-    TriggerServerEvent('austriawien_skinmenu:getEUPManifest')
     dbg('NUI-Nachricht openMenu gesendet | %d Slots | %d maxValues', #slotDefs, (function() local n=0 for _ in pairs(getMaxValues()) do n=n+1 end return n end)())
 end
 
@@ -399,13 +398,6 @@ end, false)
 RegisterNetEvent('austriawien_skinmenu:openForTarget')
 AddEventHandler('austriawien_skinmenu:openForTarget', function()
     openSkinMenu()
-end)
-
--- EUP-Manifest vom Server empfangen → an NUI weiterleiten
-RegisterNetEvent('austriawien_skinmenu:eupManifest')
-AddEventHandler('austriawien_skinmenu:eupManifest', function(manifest)
-    SendNUIMessage({ type = 'eupManifest', manifest = manifest })
-    dbg('EUP Manifest empfangen und an NUI weitergeleitet')
 end)
 
 -- ─── ESX Events ──────────────────────────────────────────────────────────────

@@ -53,26 +53,6 @@ Config.AllowedModels = {
     'mp_f_freemode_01'
 }
 
--- ─── Vorschau-Bilder ──────────────────────────────────────────────────────────
--- Bilder werden aus html/img/{slotId}/{drawableId}.png geladen.
--- Lege z.B. html/img/jacket/0.png, html/img/jacket/1.png usw. ab.
--- Fehlt ein Bild, wird automatisch das Emoji-Icon als Fallback angezeigt.
--- Du kannst hier den Basis-Pfad anpassen (relativ zu html/).
-Config.ImageBasePath = 'img'
-
--- Unterstützte Bildformate, die der Browser nacheinander versucht zu laden.
--- Erste Übereinstimmung gewinnt.
-Config.ImageFormats = { 'png', 'jpg', 'webp' }
-
--- ─── EUP-Packs (automatische Bildauslese) ────────────────────────────────────
--- Liste der Resource-Namen, deren img/-Ordner nach Vorschaubildern
--- durchsucht werden soll. Bilder müssen unter
---   {resource}/img/{slotId}/{drawableId}.png  (z.B. jacket/0.png)
--- abgelegt und im fxmanifest der EUP-Resource unter files registriert sein:
---   files { 'img/**/*.png', 'img/**/*.jpg', 'img/**/*.webp' }
--- Beispiel: Config.EUPResources = { 'eup-stream', 'eup-sp' }
-Config.EUPResources = {}
-
 -- ─── Lizenz ──────────────────────────────────────────────────────────────────
 -- Lizenzschlüssel – wird beim Ressourcenstart geprüft.
-Config.LicenseKey = '' ---AW-SKIN-2026-MIDCORE
+Config.LicenseKey = '' -- AW-SKIN-2026-MIDCORE
