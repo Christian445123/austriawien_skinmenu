@@ -3,6 +3,9 @@
 Skin-Menü für FiveM mit ESX-Framework.  
 Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
+<img width="2563" height="963" alt="image" src="https://github.com/user-attachments/assets/1c2fa57a-6549-4933-aa8c-72938f7a454a" />
+
+
 **Drop-in-Ersatz für `esx_skin`** – alle `esx_skin`-Events werden von dieser Resource abgefangen, `esx_skin` muss **nicht** laufen.
 
 ---
@@ -76,7 +79,7 @@ Config.CameraHeight   = 0.5
 Config.CameraSideOffset = -0.3
 Config.AutoLoadOnLogin  = true
 Config.AllowedModels    = { 'mp_m_freemode_01', 'mp_f_freemode_01' }
-Config.LicenseKey       = 'AW-SKIN-2026-MIDCORE'
+Config.LicenseKey       = ''
 ```
 
 ### Berechtigungen `/awskin`
