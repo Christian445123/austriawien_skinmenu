@@ -341,12 +341,12 @@ end)
 -- Kamera-Fokus pro Zone anpassen
 -- Werte direkt aus skinchanger/config.lua (camOffset / zoomOffset)
 local ZONE_CAM = {
-    head   = { height = 0.65, lookAt = 0.65, dist = 0.6  },
-    face   = { height = 0.65, lookAt = 0.65, dist = 0.6  },
-    torso  = { height = 0.15, lookAt = 0.15, dist = 0.75 },
-    hands  = { height = 0.15, lookAt = 0.15, dist = 0.75 },
-    legs   = { height = -0.5, lookAt = -0.5, dist = 0.8  },
-    shoes  = { height = -0.8, lookAt = -0.8, dist = 0.8  },
+    head   = { height = 0.65, lookAt = 0.65, dist = 1.6  },
+    face   = { height = 0.65, lookAt = 0.65, dist = 1.6  },
+    torso  = { height = 0.15, lookAt = 0.15, dist = 1.75 },
+    hands  = { height = 0.05, lookAt = 0.05, dist = 1.75 },
+    legs   = { height = 0, lookAt = 0, dist = 1.8  },
+    shoes  = { height = -0.8, lookAt = -0.8, dist = 1.0  },
 }
 
 local function setCameraZone(zone)
