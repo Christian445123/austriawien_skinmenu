@@ -3,7 +3,7 @@ Config = {}
 -- ─── Debug ────────────────────────────────────────────────────────────────────
 -- true  → alle Logs in die F8-Konsole (Client) und Server-Konsole schreiben
 -- false → kein Output (für Produktion)
-Config.Debug = true
+Config.Debug = false
 
 -- ─── Befehle ──────────────────────────────────────────────────────────────────
 -- /awskin          → eigenes Skin-Menü öffnen
@@ -39,4 +39,4 @@ Config.AllowedModels = {
 
 -- ─── Lizenz ──────────────────────────────────────────────────────────────────
 -- Lizenzschlüssel – wird beim Ressourcenstart geprüft.
-Config.LicenseKey = 'AW-SKIN-2026-MIDCORE' -- Lizenzschlüssel hier eintragen
+Config.LicenseKey = '' -- Lizenzschlüssel hier eintragen
