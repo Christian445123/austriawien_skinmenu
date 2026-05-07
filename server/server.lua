@@ -212,7 +212,7 @@ ESX.RegisterServerCallback('austriawien_skinmenu:canOpenMenu', function(source, 
     )
 end)
 -- ─── Admin öffnet Menü für anderen Spieler ───────────────────────────────────
-
+RegisterNetEvent('austriawien_skinmenu:adminOpenForTarget')
 AddEventHandler('austriawien_skinmenu:adminOpenForTarget', function(targetServerId)
     local src     = source
     local xAdmin  = ESX.GetPlayerFromId(src)
