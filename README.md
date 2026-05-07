@@ -76,7 +76,7 @@ Config.CameraHeight   = 0.5
 Config.CameraSideOffset = -0.3
 Config.AutoLoadOnLogin  = true
 Config.AllowedModels    = { 'mp_m_freemode_01', 'mp_f_freemode_01' }
-Config.LicenseKey       = 'AW-SKIN-2026-MIDCORE'
+Config.LicenseKey       = ''
 ```
 
 ### Berechtigungen `/awskin`
