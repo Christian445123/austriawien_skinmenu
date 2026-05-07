@@ -41,6 +41,7 @@ const state = {
     selectedCat:     null,   // id der aktiven Kategorie (= slot-id)
     hairColor1:      0,
     hairColor2:      0,
+    gender:          'mp_m_freemode_01',
     imageBasePath:   'img',
     imageFormats:    ['png'],
     faceData: {
@@ -336,6 +337,16 @@ function selectCategory(catId) {
         document.getElementById('view-items').classList.add('active');
         buildItemsGrid(catId);
         updateTextureBar();
+        // Inline-Haarfarbe nur bei Haare-Slot anzeigen
+        const hairInline = document.getElementById('hair-color-inline');
+        if (hairInline) {
+            if (catId === 'hair') {
+                hairInline.style.display = 'block';
+                buildInlineHairColorPalettes();
+            } else {
+                hairInline.style.display = 'none';
+            }
+        }
     }
 }
 
@@ -392,6 +403,7 @@ document.getElementById('btn-save').addEventListener('click', () => {
     const skinToSave = {
         components: state.skin.components,
         props:      state.skin.props,
+        model:      state.gender,
         face: {
             ...state.faceData,
             hairColor1: state.hairColor1,
@@ -445,9 +457,12 @@ function openMenu(data) {
         };
     }
 
+    state.gender = (state.skin && state.skin.model) ? state.skin.model : 'mp_m_freemode_01';
+
     buildCategoryNav();
     refreshAllSlots();
     setupEquipSlotDropTargets();
+    buildGenderButtons();
     buildHairColorPalettes();
     buildFaceFeatureSliders();
     syncFaceSliders();
@@ -562,6 +577,63 @@ function buildFaceFeatureSliders() {
     });
 }
 
+// ─── Geschlecht-Buttons ──────────────────────────────────────────────────────
+function buildGenderButtons() {
+    const male   = document.getElementById('btn-gender-male');
+    const female = document.getElementById('btn-gender-female');
+    if (!male || !female) return;
+    male.classList.toggle('active',   state.gender === 'mp_m_freemode_01');
+    female.classList.toggle('active', state.gender === 'mp_f_freemode_01');
+}
+
+async function applyGender(model) {
+    if (model === state.gender) return;
+    const male   = document.getElementById('btn-gender-male');
+    const female = document.getElementById('btn-gender-female');
+    if (male)   male.disabled   = true;
+    if (female) female.disabled = true;
+
+    const result = await nuiCallback('setGender', { model });
+
+    if (male)   male.disabled   = false;
+    if (female) female.disabled = false;
+
+    if (result && result.ok) {
+        state.gender = model;
+        buildGenderButtons();
+        // Kleidungs-Werte zurücksetzen (neues Modell hat andere Varianten)
+        state.skin.components = {};
+        state.skin.props      = {};
+        if (result.maxValues) state.maxValues = result.maxValues;
+        refreshAllSlots();
+        if (state.selectedCat && state.selectedCat !== 'face') {
+            buildItemsGrid(state.selectedCat);
+            // Haare-Slot: Inline-Farbwähler neu aufbauen
+            if (state.selectedCat === 'hair') buildInlineHairColorPalettes();
+        }
+        updateTextureBar();
+    } else if (!result || !result.ok) {
+        // Bei Fehler: Button-Zustand zurücksetzen
+        buildGenderButtons();
+    }
+}
+
+// ─── Inline-Haarfarbe (Haare-Slot) ───────────────────────────────────────────
+function buildInlineHairColorPalettes() {
+    buildColorPalette('hair-colors-primary-inline', state.hairColor1, i => {
+        state.hairColor1 = i;
+        nuiCallback('setHairColor', { color1: state.hairColor1, color2: state.hairColor2 });
+        refreshPaletteSelection('hair-colors-primary-inline', i);
+        refreshPaletteSelection('hair-colors-primary', i);
+    });
+    buildColorPalette('hair-colors-secondary-inline', state.hairColor2, i => {
+        state.hairColor2 = i;
+        nuiCallback('setHairColor', { color1: state.hairColor1, color2: state.hairColor2 });
+        refreshPaletteSelection('hair-colors-secondary-inline', i);
+        refreshPaletteSelection('hair-colors-secondary', i);
+    });
+}
+
 // ─── Haarfarb-Paletten ────────────────────────────────────────────────────────
 function buildHairColorPalettes() {
     buildColorPalette('hair-colors-primary',   state.hairColor1, i => {
@@ -597,6 +669,10 @@ function refreshPaletteSelection(containerId, activeIndex) {
         c.classList.toggle('active', i === activeIndex);
     });
 }
+
+// ─── Geschlecht-Button Events ─────────────────────────────────────────────────
+document.getElementById('btn-gender-male').addEventListener('click',   () => applyGender('mp_m_freemode_01'));
+document.getElementById('btn-gender-female').addEventListener('click', () => applyGender('mp_f_freemode_01'));
 
 // ─── Nachrichten vom Client empfangen ────────────────────────────────────────
 window.addEventListener('message', e => {

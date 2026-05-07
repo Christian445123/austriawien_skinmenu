@@ -86,12 +86,44 @@ local function readCurrentSkin()
     skin.face.features     = {}
     skin.face.overlays     = {}
 
+    -- Modell (Geschlecht)
+    local modelHash = GetEntityModel(ped)
+    if modelHash == GetHashKey('mp_f_freemode_01') then
+        skin.model = 'mp_f_freemode_01'
+    else
+        skin.model = 'mp_m_freemode_01'
+    end
+
     return skin
 end
 
 -- ─── Skin anwenden ───────────────────────────────────────────────────────────
 local function applySkin(skin)
     local ped = PlayerPedId()
+
+    -- Modell wechseln falls nötig (Wait() ist ok – läuft immer in Citizen-Thread)
+    if skin.model then
+        local targetHash = GetHashKey(skin.model)
+        if GetEntityModel(ped) ~= targetHash then
+            local valid = false
+            for _, m in ipairs(Config.AllowedModels) do
+                if m == skin.model then valid = true; break end
+            end
+            if valid then
+                dbg('applySkin: Modellwechsel → %s', skin.model)
+                RequestModel(targetHash)
+                local t = 0
+                while not HasModelLoaded(targetHash) and t < 50 do
+                    Wait(100); t = t + 1
+                end
+                if HasModelLoaded(targetHash) then
+                    SetPlayerModel(PlayerId(), targetHash)
+                    SetModelAsNoLongerNeeded(targetHash)
+                    ped = PlayerPedId()
+                end
+            end
+        end
+    end
 
     if skin.components then
         for id, data in pairs(skin.components) do
@@ -376,6 +408,57 @@ end)
 RegisterNUICallback('setHairColor', function(data, cb)
     SetPedHairColor(PlayerPedId(), data.color1 or 0, data.color2 or 0)
     cb({})
+end)
+
+-- Geschlecht / Modell wechseln
+RegisterNUICallback('setGender', function(data, cb)
+    local model = tostring(data.model or '')
+    local valid = false
+    for _, m in ipairs(Config.AllowedModels) do
+        if m == model then valid = true; break end
+    end
+    if not valid then
+        dbg('setGender: ungültiges Modell "%s"', model)
+        cb({ ok = false })
+        return
+    end
+
+    local targetHash = GetHashKey(model)
+    if GetEntityModel(PlayerPedId()) == targetHash then
+        cb({ ok = true, maxValues = getMaxValues() })
+        return
+    end
+
+    dbg('setGender: lade Modell "%s"', model)
+    RequestModel(targetHash)
+    local t = 0
+    while not HasModelLoaded(targetHash) and t < 100 do
+        Wait(100)
+        t = t + 1
+    end
+
+    if not HasModelLoaded(targetHash) then
+        dbg('setGender: Modell konnte nicht geladen werden')
+        cb({ ok = false })
+        return
+    end
+
+    SetPlayerModel(PlayerId(), targetHash)
+    SetModelAsNoLongerNeeded(targetHash)
+
+    local ped = PlayerPedId()
+    -- Standardkomponenten für das neue Modell setzen (sonst erscheint der Ped nackt/kaputt)
+    SetPedDefaultComponentVariation(ped)
+
+    if Config.FreezeOnOpen and isMenuOpen then
+        FreezeEntityPosition(ped, true)
+    end
+    -- NUI-Fokus nach dem Modellwechsel neu setzen (SetPlayerModel kann ihn zurücksetzen)
+    SetNuiFocus(true, true)
+    updateCameraPos()
+
+    dbg('setGender: Modell gewechselt zu "%s"', model)
+    cb({ ok = true, maxValues = getMaxValues() })
 end)
 
 -- Gesichts-Feature-Slider
