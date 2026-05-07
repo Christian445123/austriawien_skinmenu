@@ -1,5 +1,5 @@
 local ESX = nil
-local RESOURCE_VERSION = '1.0.3'
+local RESOURCE_VERSION = GetResourceMetadata(GetCurrentResourceName(), 'version', 0) or 'unknown'
 
 -- ─── ESX holen ───────────────────────────────────────────────────────────────
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
