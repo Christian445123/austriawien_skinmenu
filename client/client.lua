@@ -2,6 +2,9 @@ local ESX         = nil
 local isMenuOpen  = false
 local cam         = nil
 local camAngle    = 0.0
+local camDist     = nil  -- aktuelle Zoom-Distanz (nil = Config.CameraDistance)
+local camHeight   = nil  -- aktuelle Kamerahöhe   (nil = Config.CameraHeight)
+local camLookAt   = 0.5  -- aktueller LookAt-Offset
 local savedSkin   = {}
 local currentSkin = {}
 
@@ -173,7 +176,11 @@ local function createCamera()
     local pos     = GetEntityCoords(ped)
     -- Negatives Vorzeichen: GTA Heading läuft im Uhrzeigersinn (90° = Westen, nicht Osten)
     -- -heading stellt die Kamera immer vor den Charakter (Vorderseite sichtbar)
-    camAngle      = -GetEntityHeading(ped)
+    camAngle  = -GetEntityHeading(ped)
+    -- Zone-Zoom zurücksetzen: Menü startet immer mit Standard-Distanz
+    camDist   = nil
+    camHeight = nil
+    camLookAt = 0.5
 
     -- Seitwärts-Versatz: rechtwinklig zur Blickrichtung der Kamera
     local sideOffset = Config.CameraSideOffset or -0.3  -- negativ = leicht nach rechts versetzen
@@ -192,12 +199,18 @@ end
 
 local function updateCameraPos()
     if not cam or not DoesCamExist(cam) then return end
-    local ped = PlayerPedId()
-    local pos = GetEntityCoords(ped)
-    local x = pos.x + Config.CameraDistance * math.sin(math.rad(camAngle))
-    local y = pos.y + Config.CameraDistance * math.cos(math.rad(camAngle))
-    SetCamCoord(cam, x, y, pos.z + Config.CameraHeight)
-    PointCamAtCoord(cam, pos.x, pos.y, pos.z + 0.5)
+    local ped        = PlayerPedId()
+    local pos        = GetEntityCoords(ped)
+    local dist       = camDist   or Config.CameraDistance
+    local height     = camHeight or Config.CameraHeight
+    local lookAt     = camLookAt or 0.5
+    local sideOffset = Config.CameraSideOffset or -0.3
+    local sinA       = math.sin(math.rad(camAngle))
+    local cosA       = math.cos(math.rad(camAngle))
+    local x          = pos.x + dist * sinA + sideOffset * cosA
+    local y          = pos.y + dist * cosA - sideOffset * sinA
+    SetCamCoord(cam, x, y, pos.z + height)
+    PointCamAtCoord(cam, pos.x, pos.y, pos.z + lookAt)
 end
 
 local function destroyCamera()
@@ -338,17 +351,12 @@ local ZONE_CAM = {
 
 local function setCameraZone(zone)
     if not cam or not DoesCamExist(cam) then return end
-    local cfg        = ZONE_CAM[zone] or ZONE_CAM['torso']
-    local ped        = PlayerPedId()
-    local pos        = GetEntityCoords(ped)
-    local dist       = cfg.dist
-    local sideOffset = Config.CameraSideOffset or -0.3
-    local sinA       = math.sin(math.rad(camAngle))
-    local cosA       = math.cos(math.rad(camAngle))
-    local x          = pos.x + dist * sinA + sideOffset * cosA
-    local y          = pos.y + dist * cosA - sideOffset * sinA
-    SetCamCoord(cam, x, y, pos.z + cfg.height)
-    PointCamAtCoord(cam, pos.x, pos.y, pos.z + cfg.lookAt)
+    local cfg    = ZONE_CAM[zone] or ZONE_CAM['torso']
+    -- Werte merken, damit updateCameraPos (Drehen) denselben Zoom behält
+    camDist      = cfg.dist
+    camHeight    = cfg.height
+    camLookAt    = cfg.lookAt
+    updateCameraPos()
     SetCamFov(cam, Config.CameraFOV)
 end
 
