@@ -337,16 +337,6 @@ function selectCategory(catId) {
         document.getElementById('view-items').classList.add('active');
         buildItemsGrid(catId);
         updateTextureBar();
-        // Inline-Haarfarbe nur bei Haare-Slot anzeigen
-        const hairInline = document.getElementById('hair-color-inline');
-        if (hairInline) {
-            if (catId === 'hair') {
-                hairInline.style.display = 'block';
-                buildInlineHairColorPalettes();
-            } else {
-                hairInline.style.display = 'none';
-            }
-        }
     }
 }
 
@@ -608,30 +598,12 @@ async function applyGender(model) {
         refreshAllSlots();
         if (state.selectedCat && state.selectedCat !== 'face') {
             buildItemsGrid(state.selectedCat);
-            // Haare-Slot: Inline-Farbwähler neu aufbauen
-            if (state.selectedCat === 'hair') buildInlineHairColorPalettes();
         }
         updateTextureBar();
     } else if (!result || !result.ok) {
         // Bei Fehler: Button-Zustand zurücksetzen
         buildGenderButtons();
     }
-}
-
-// ─── Inline-Haarfarbe (Haare-Slot) ───────────────────────────────────────────
-function buildInlineHairColorPalettes() {
-    buildColorPalette('hair-colors-primary-inline', state.hairColor1, i => {
-        state.hairColor1 = i;
-        nuiCallback('setHairColor', { color1: state.hairColor1, color2: state.hairColor2 });
-        refreshPaletteSelection('hair-colors-primary-inline', i);
-        refreshPaletteSelection('hair-colors-primary', i);
-    });
-    buildColorPalette('hair-colors-secondary-inline', state.hairColor2, i => {
-        state.hairColor2 = i;
-        nuiCallback('setHairColor', { color1: state.hairColor1, color2: state.hairColor2 });
-        refreshPaletteSelection('hair-colors-secondary-inline', i);
-        refreshPaletteSelection('hair-colors-secondary', i);
-    });
 }
 
 // ─── Haarfarb-Paletten ────────────────────────────────────────────────────────

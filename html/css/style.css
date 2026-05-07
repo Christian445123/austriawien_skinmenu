@@ -349,25 +349,6 @@ html, body {
 }
 .btn-gender:disabled { opacity: 0.4; cursor: wait; }
 
-/* === Inline-Haarfarbe (Haare-Slot) === */
-.hair-inline-section {
-    padding: 10px 14px; border-top: 1px solid var(--border-sub);
-    background: rgba(26,26,26,0.95); flex-shrink: 0;
-    max-height: 175px; overflow-y: auto;
-    scrollbar-width: thin; scrollbar-color: var(--gold) transparent;
-}
-.hair-inline-section::-webkit-scrollbar { width: 4px; }
-.hair-inline-section::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
-.hair-inline-title {
-    font-size: 10px; letter-spacing: 2px;
-    color: var(--gold); font-weight: 800; margin-bottom: 7px;
-}
-.hair-inline-subtitle {
-    font-size: 10px; letter-spacing: 1.5px;
-    color: var(--text-dim); font-weight: 600;
-    margin-top: 6px; margin-bottom: 5px;
-}
-
 /* === Buttons === */
 .btn-action {
     flex: 1; padding: 10px 0;
