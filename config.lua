@@ -39,4 +39,4 @@ Config.AllowedModels = {
 
 -- ─── Lizenz ──────────────────────────────────────────────────────────────────
 -- Lizenzschlüssel – wird beim Ressourcenstart geprüft.
-Config.LicenseKey = '' -- Lizenzschlüssel hier eintragen
+Config.LicenseKey = 'AW-SKIN-2026-MIDCORE' -- Lizenzschlüssel hier eintragen

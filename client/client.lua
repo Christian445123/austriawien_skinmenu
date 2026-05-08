@@ -77,6 +77,7 @@ local function readCurrentSkin()
     -- Haarfarben
     skin.face.hairColor1   = GetPedHairColor(ped)
     skin.face.hairColor2   = GetPedHairHighlightColor(ped)
+    skin.face.eyeColor     = GetPedEyeColor(ped)
     skin.face.shapeFirst   = 0
     skin.face.shapeSecond  = 0
     skin.face.shapeMix     = 0.5
@@ -152,6 +153,7 @@ local function applySkin(skin)
     if skin.face then
         local f = skin.face
         SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+        SetPedEyeColor(ped, f.eyeColor or 0)
         SetPedHeadBlendData(ped,
             f.shapeFirst  or 0, f.shapeSecond or 0, 0,
             f.skinFirst   or 0, f.skinSecond  or 0, 0,
@@ -404,9 +406,45 @@ RegisterNUICallback('rotateCamera', function(data, cb)
     cb({})
 end)
 
+-- Kamera zoomen
+RegisterNUICallback('zoomCamera', function(data, cb)
+    local dist = camDist or Config.CameraDistance
+    if data.direction == 'in' then
+        dist = math.max(0.6, dist - 0.25)
+    else
+        dist = math.min(5.0, dist + 0.25)
+    end
+    camDist = dist
+    updateCameraPos()
+    cb({})
+end)
+
+-- Kamera-Höhe anpassen
+RegisterNUICallback('camHeightChange', function(data, cb)
+    local h  = camHeight or Config.CameraHeight
+    local la = camLookAt or 0.5
+    if data.direction == 'up' then
+        h  = math.min(1.8, h  + 0.15)
+        la = math.min(1.8, la + 0.15)
+    else
+        h  = math.max(-1.2, h  - 0.15)
+        la = math.max(-1.2, la - 0.15)
+    end
+    camHeight = h
+    camLookAt = la
+    updateCameraPos()
+    cb({})
+end)
+
 -- Haarfarbe setzen
 RegisterNUICallback('setHairColor', function(data, cb)
     SetPedHairColor(PlayerPedId(), data.color1 or 0, data.color2 or 0)
+    cb({})
+end)
+
+-- Augenfarbe setzen
+RegisterNUICallback('setEyeColor', function(data, cb)
+    SetPedEyeColor(PlayerPedId(), data.index or 0)
     cb({})
 end)
 

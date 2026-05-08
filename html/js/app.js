@@ -19,6 +19,18 @@ const HAIR_COLORS = [
     '#806040','#604020','#402010','#200c04'
 ];
 
+// ─── GTA V Augenfarben-Palette (32 Farben) ───────────────────────────────────
+const EYE_COLORS = [
+    '#1a1a1a','#2e8b57','#1a4a1a','#90ee90',
+    '#1e3a8a','#87ceeb','#00ced1','#8b4513',
+    '#4a2800','#d4a017','#8b6914','#c8a46a',
+    '#808080','#404040','#c0c0c0','#ffc0cb',
+    '#cc0000','#daa520','#800080','#9370db',
+    '#add8e6','#00bcd4','#ff8c00','#228b22',
+    '#ff6600','#a0522d','#3e1f00','#f5f5f5',
+    '#b0d4f1','#b0f0b0','#d0b0f0','#e8e8e8'
+];
+
 // ─── Gesichtszug-Namen ────────────────────────────────────────────────────────
 const FACE_FEATURE_NAMES = [
     'Nasenbreite','Nasenspitze Höhe','Nasenspitze Länge','Nasenbein Höhe',
@@ -41,6 +53,7 @@ const state = {
     selectedCat:     null,   // id der aktiven Kategorie (= slot-id)
     hairColor1:      0,
     hairColor2:      0,
+    eyeColor:        0,
     gender:          'mp_m_freemode_01',
     imageBasePath:   'img',
     imageFormats:    ['png'],
@@ -385,8 +398,12 @@ document.getElementById('btn-tex-next').addEventListener('click', () => {
 });
 
 // ─── Kamera-Buttons ───────────────────────────────────────────────────────────
-document.getElementById('btn-rotate-left').addEventListener('click',  () => nuiCallback('rotateCamera', { direction: 'left'  }));
-document.getElementById('btn-rotate-right').addEventListener('click', () => nuiCallback('rotateCamera', { direction: 'right' }));
+document.getElementById('btn-rotate-left').addEventListener('click',   () => nuiCallback('rotateCamera',    { direction: 'left'  }));
+document.getElementById('btn-rotate-right').addEventListener('click',  () => nuiCallback('rotateCamera',    { direction: 'right' }));
+document.getElementById('btn-cam-up').addEventListener('click',        () => nuiCallback('camHeightChange', { direction: 'up'    }));
+document.getElementById('btn-cam-down').addEventListener('click',      () => nuiCallback('camHeightChange', { direction: 'down'  }));
+document.getElementById('btn-cam-zoom-in').addEventListener('click',   () => nuiCallback('zoomCamera',      { direction: 'in'   }));
+document.getElementById('btn-cam-zoom-out').addEventListener('click',  () => nuiCallback('zoomCamera',      { direction: 'out'  }));
 
 // ─── Speichern / Abbrechen ────────────────────────────────────────────────────
 document.getElementById('btn-save').addEventListener('click', () => {
@@ -397,7 +414,8 @@ document.getElementById('btn-save').addEventListener('click', () => {
         face: {
             ...state.faceData,
             hairColor1: state.hairColor1,
-            hairColor2: state.hairColor2
+            hairColor2: state.hairColor2,
+            eyeColor:   state.eyeColor
         }
     };
     nuiCallback('save', { skin: skinToSave });
@@ -435,6 +453,7 @@ function openMenu(data) {
         const f = state.skin.face;
         state.hairColor1 = f.hairColor1 ?? 0;
         state.hairColor2 = f.hairColor2 ?? 0;
+        state.eyeColor   = f.eyeColor   ?? 0;
         state.faceData   = {
             shapeFirst:  f.shapeFirst  ?? 0,
             shapeSecond: f.shapeSecond ?? 0,
@@ -454,6 +473,7 @@ function openMenu(data) {
     setupEquipSlotDropTargets();
     buildGenderButtons();
     buildHairColorPalettes();
+    buildEyeColorPalette();
     buildFaceFeatureSliders();
     syncFaceSliders();
 
@@ -639,6 +659,27 @@ function refreshPaletteSelection(containerId, activeIndex) {
     if (!el) return;
     el.querySelectorAll('.hair-color-chip').forEach((c, i) => {
         c.classList.toggle('active', i === activeIndex);
+    });
+}
+
+// ─── Augenfarb-Palette ────────────────────────────────────────────────────────
+function buildEyeColorPalette() {
+    const el = document.getElementById('eye-colors');
+    if (!el) return;
+    el.innerHTML = '';
+    EYE_COLORS.forEach((hex, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'hair-color-chip' + (i === state.eyeColor ? ' active' : '');
+        chip.style.background = hex;
+        chip.title = `Augenfarbe ${i}`;
+        chip.addEventListener('click', () => {
+            state.eyeColor = i;
+            el.querySelectorAll('.hair-color-chip').forEach((c, j) => {
+                c.classList.toggle('active', j === i);
+            });
+            nuiCallback('setEyeColor', { index: i });
+        });
+        el.appendChild(chip);
     });
 }
 
