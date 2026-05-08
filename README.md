@@ -5,12 +5,18 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 <img width="2563" height="963" alt="image" src="https://github.com/user-attachments/assets/1c2fa57a-6549-4933-aa8c-72938f7a454a" />
 
-
 **Drop-in-Ersatz für `esx_skin`** – alle `esx_skin`-Events werden von dieser Resource abgefangen, `esx_skin` muss **nicht** laufen.
 
 ---
 
 ## Changelog
+
+### 2026-05-08 – v1.1.0
+- **Neu:** Augenfarbe (32 Farben) im Gesichts-Tab anpassbar – live Vorschau
+- **Neu:** Kamera-Höhe per ▲/▼-Buttons anpassen (Schritte 0.15, Bereich −1.2–1.8)
+- **Neu:** Kamera-Zoom per +/−-Buttons anpassen (Schritte 0.25, Bereich 0.6–5.0)
+- **UI:** Kamera-Bar in drei Zeilen: DREHEN / HÖHE / ZOOM
+- **UI:** Zoom-Faktor von 1.25 auf 0.85 reduziert (kleinere Darstellung)
 
 ### 2026-05-06 – v1.0.4
 - **Neu:** `/awskin` nur noch für Admins (`admin`-Gruppe) – Ausnahme: erstes Mal (kein Skin in DB) darf jeder Spieler öffnen
@@ -68,18 +74,17 @@ Zeigt den live GTA-Charakter in der Mitte während man Kleidung anpasst.
 
 ```lua
 Config = {}
-Config.Debug          = false
-Config.Command        = 'awskin'
-Config.DatabaseTable  = 'austriawien_skins'
-Config.AdminGroups    = { 'admin' }   -- darf /awskin jederzeit öffnen
-Config.FreezeOnOpen   = true
-Config.CameraFOV      = 45.0
-Config.CameraDistance = 2.2
-Config.CameraHeight   = 0.5
+Config.Debug            = false
+Config.Command          = 'awskin'
+Config.DatabaseTable    = 'austriawien_skins'
+Config.AdminGroups      = { 'admin' }   -- darf /awskin jederzeit öffnen
+Config.FreezeOnOpen     = true
+Config.CameraFOV        = 45.0
+Config.CameraDistance   = 2.2
+Config.CameraHeight     = 0.5
 Config.CameraSideOffset = -0.3
 Config.AutoLoadOnLogin  = true
 Config.AllowedModels    = { 'mp_m_freemode_01', 'mp_f_freemode_01' }
-Config.LicenseKey       = ''
 ```
 
 ### Berechtigungen `/awskin`
@@ -92,7 +97,16 @@ Config.LicenseKey       = ''
 | Admin `/awskin [id]` | Öffnet Menü für Ziel-Spieler |
 
 ### Kamera
-Die Kamera fokussiert automatisch auf die aktive Zone beim Slot-Wechsel und startet **immer von vorne**:
+Die Kamera fokussiert automatisch auf die aktive Zone beim Slot-Wechsel und startet **immer von vorne**.  
+Über die drei Kamera-Button-Reihen im linken Panel lässt sich die Kamera vollständig steuern:
+
+| Buttons | Funktion | Schrittweite | Bereich |
+|---|---|---|---|
+| ◀ DREHEN ▶ | Charakter drehen | 20° | 360° |
+| ▲ HÖHE ▼ | Kamera hoch/runter | 0.15 | −1.2 – 1.8 |
+| − ZOOM + | Näher/weiter ran | 0.25 | 0.6 – 5.0 |
+
+Automatischer Zonen-Fokus beim Slot-Klick:
 
 | Zone | Kamera springt auf |
 |---|---|
@@ -127,6 +141,22 @@ end
 ```
 
 Beide Hooks feuern `esx_skin`-Events – `austriawien_skinmenu` fängt diese ab, `esx_skin` selbst läuft nicht.
+
+---
+
+## Gesichts-Editor
+
+Der Gesichts-Tab (rechtes Panel) enthält folgende Abschnitte:
+
+| Abschnitt | Inhalt |
+|---|---|
+| Geschlecht | Männlich / Weiblich umschalten |
+| Gesichtsform | Head-Blend Shape (Form 1+2 + Mix) |
+| Hautfarbe | Head-Blend Skin (Haut 1+2 + Mix) |
+| Haarfarbe | 64 Farb-Chips Primär + Strähnen |
+| Augenfarbe | 32 Farb-Chips, live Vorschau |
+| Bart & Augenbrauen | Stil + Stärke per Slider |
+| Gesichtszüge | 20 Morph-Slider (Nase, Kiefer, Wangen, …) |
 
 ---
 
@@ -188,6 +218,8 @@ Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanif
 │  │ Schuhe     │ │                          │                 │
 │  └────────────┘ │                          │                 │
 │  [◄ DREHEN ►]   │                          │                 │
+│  [▲ HÖHE   ▼]   │                          │                 │
+│  [− ZOOM   +]   │                          │                 │
 └─────────────────┴──────────────────────────┴─────────────────┘
        280 px              transparent               370 px
 ```
@@ -195,7 +227,7 @@ Fehlt ein Bild → Emoji-Icon als Fallback. Bilder müssen **nicht** in `fxmanif
 **Bedienung:**
 - Klick auf Item-Karte (rechts) → Kleidung wird sofort angelegt
 - Klick auf einen Equip-Slot (links) → Garderobe springt zur Kategorie, Kamera zoomt auf die Zone
-- Kamera-Buttons drehen den Charakter in Echtzeit
+- Kamera-Buttons: Drehen, Höhe anpassen, Zoom steuern
 - **SPEICHERN** → Skin in Datenbank schreiben
 - **ABBRECHEN** → Alle Änderungen rückgängig
 
