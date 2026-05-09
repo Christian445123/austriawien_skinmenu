@@ -93,6 +93,12 @@ Citizen.CreateThread(function()
     end
 end)
 
+-- ─── Skin-Cache (In-Memory) ─────────────────────────────────────────────────
+-- Hält den zuletzt bekannten Skin jedes Spielers im Speicher.
+-- Wird beim Laden/Speichern aktualisiert und bei Spieler-Disconnect für
+-- die automatische Speicherung (Autosave) genutzt.
+local skinCache = {}
+
 -- ─── Admin-Prüfung ───────────────────────────────────────────────────────────
 local function isAdmin(xPlayer)
     local group = xPlayer.getGroup()
@@ -180,6 +186,83 @@ local function awSkinToEsx(s)
     }
 end
 
+-- ─── ESX Flat-Format → AWskin Nested Format (server-seitig) ─────────────────
+-- Spiegelversion der client.lua esxSkinToAW. Konvertiert skinchanger/esx_skin
+-- Flat-Skins in unser AWskin-Format damit immer konsistent in der DB steht.
+local function esxFlatToAW(s)
+    if type(s) ~= 'table' then return s end
+    -- Bereits AWskin-Format (hat components oder face oder props)
+    if s.components ~= nil or s.face ~= nil or s.props ~= nil then
+        if not s.model then
+            s.model = (tonumber(s.sex) == 1) and 'mp_f_freemode_01' or 'mp_m_freemode_01'
+        end
+        return s
+    end
+    -- Kein erkennbares Flat-Format → unverändert zurück
+    if s.sex == nil and s.torso_1 == nil and s.mom == nil and s.hair == nil then
+        return s
+    end
+    return {
+        model = ((tonumber(s.sex) or 0) == 1) and 'mp_f_freemode_01' or 'mp_m_freemode_01',
+        components = {
+            mask        = { drawable = s.mask_1    or 0, texture = s.mask_2    or 0 },
+            arms        = { drawable = s.arms      or 0, texture = s.arms_2    or 0 },
+            bag         = { drawable = s.bags_1    or 0, texture = s.bags_2    or 0 },
+            shoes       = { drawable = s.shoes_1   or 0, texture = s.shoes_2   or 0 },
+            accessories = { drawable = s.chain_1   or 0, texture = s.chain_2   or 0 },
+            undershirt  = { drawable = s.tshirt_1  or 0, texture = s.tshirt_2  or 0 },
+            armor       = { drawable = s.bproof_1  or 0, texture = s.bproof_2  or 0 },
+            decal       = { drawable = s.decals_1  or 0, texture = s.decals_2  or 0 },
+            jacket      = { drawable = s.torso_1   or 0, texture = s.torso_2   or 0 },
+            legs        = { drawable = s.pants_1   or 0, texture = s.pants_2   or 0 },
+            hair        = { drawable = s.hair      or 0, texture = 0 },
+        },
+        props = {
+            hat      = { drawable = (s.helmet_1   ~= nil) and s.helmet_1   or -1, texture = s.helmet_2   or 0 },
+            glasses  = { drawable = (s.glasses_1  ~= nil) and s.glasses_1  or -1, texture = s.glasses_2  or 0 },
+            ear      = { drawable = (s.ear_1      ~= nil) and s.ear_1      or -1, texture = s.ear_2      or 0 },
+            watch    = { drawable = (s.watch_1    ~= nil) and s.watch_1    or -1, texture = s.watch_2    or 0 },
+            bracelet = { drawable = (s.bracelet_1 ~= nil) and s.bracelet_1 or -1, texture = s.bracelet_2 or 0 },
+        },
+        face = {
+            hairColor1   = s.hair_color_1    or 0,
+            hairColor2   = s.hair_color_2    or 0,
+            eyeColor     = s.eye_color       or 0,
+            shapeFirst   = s.mom             or 0,
+            shapeSecond  = s.dad             or 0,
+            shapeMix     = (s.face_md_weight or 50) / 100,
+            skinFirst    = s.mom             or 0,
+            skinSecond   = s.dad             or 0,
+            skinMix      = (s.skin_md_weight or 50) / 100,
+            eyebrowColor = s.eyebrow_1       or 0,
+            features = {
+                (s.nose_1        or 0)/10, (s.nose_2   or 0)/10, (s.nose_3 or 0)/10,
+                (s.nose_4        or 0)/10, (s.nose_5   or 0)/10, (s.nose_6 or 0)/10,
+                (s.cheeks_1      or 0)/10, (s.cheeks_2 or 0)/10, (s.cheeks_3 or 0)/10,
+                0, (s.lip_thickness or 0)/10, 0,
+                (s.jaw_1         or 0)/10, (s.jaw_2    or 0)/10,
+                (s.chin_1        or 0)/10, (s.chin_2   or 0)/10, (s.chin_3  or 0)/10,
+                0, 0, 0
+            },
+            overlays = {
+                { id=0,  index=s.blemishes          or 0, opacity=s.blemishes_1_opacity          or 0 },
+                { id=1,  index=s.beard              or 0, opacity=s.beard_1_opacity              or 0, colorType=1, color1=s.beard_1      or 0, color2=s.beard_2    or 0 },
+                { id=2,  index=s.eyebrow            or 0, opacity=s.eyebrow_1_opacity            or 1, colorType=1, color1=s.eyebrow_1    or 0, color2=s.eyebrow_2  or 0 },
+                { id=3,  index=s.aging              or 0, opacity=s.aging_1_opacity              or 0 },
+                { id=4,  index=s.makeup             or 0, opacity=s.makeup_1_opacity             or 0, colorType=2, color1=s.makeup_1     or 0, color2=0 },
+                { id=5,  index=s.blush              or 0, opacity=s.blush_1_opacity              or 0, colorType=2, color1=s.blush_1      or 0, color2=0 },
+                { id=6,  index=s.complexion         or 0, opacity=s.complexion_1_opacity         or 0 },
+                { id=7,  index=s.sun_damage         or 0, opacity=s.sun_damage_1_opacity         or 0 },
+                { id=8,  index=s.lipstick           or 0, opacity=s.lipstick_1_opacity           or 0, colorType=2, color1=s.lipstick_1   or 0, color2=0 },
+                { id=9,  index=s.freckles           or 0, opacity=s.freckles_1_opacity           or 0 },
+                { id=10, index=s.chest_hair         or 0, opacity=s.chest_hair_1_opacity         or 0, colorType=1, color1=s.chest_hair_1 or 0, color2=0 },
+                { id=11, index=s.body_blemishes     or 0, opacity=s.body_blemishes_1_opacity     or 0 },
+                { id=12, index=s.add_body_blemishes or 0, opacity=s.add_body_blemishes_1_opacity or 0 },
+            },
+        }
+    }
+end
+
 -- ─── Datenbank-Tabelle anlegen ───────────────────────────────────────────────
 CreateThread(function()
     MySQL.query([[
@@ -193,6 +276,8 @@ CreateThread(function()
 end)
 
 -- ─── Skin laden ──────────────────────────────────────────────────────────────
+-- Wenn der Skin bereits im Cache ist (vorgeladen über esx:playerLoaded),
+-- wird er sofort ohne DB-Abfrage gesendet → kein visueller Flicker beim Spawn.
 RegisterNetEvent('austriawien_skinmenu:loadSkin')
 AddEventHandler('austriawien_skinmenu:loadSkin', function()
     local src     = source
@@ -205,17 +290,23 @@ AddEventHandler('austriawien_skinmenu:loadSkin', function()
     local identifier = xPlayer.identifier
     dbg('loadSkin | src=%d | identifier=%s', src, identifier)
 
+    -- Cache-Treffer → sofort senden (keine Wartezeit)
+    if skinCache[identifier] then
+        dbg('loadSkin: aus Cache | %s (%d Bytes)', identifier, #skinCache[identifier])
+        TriggerClientEvent('austriawien_skinmenu:applySkin', src, skinCache[identifier], false)
+        return
+    end
+
     MySQL.query(
         'SELECT skin FROM ?? WHERE identifier = ?',
         { Config.DatabaseTable, identifier },
         function(result)
             if result and result[1] then
                 dbg('Skin gefunden für %s (%d Bytes)', identifier, #result[1].skin)
-                -- firstLogin = false: Skin vorhanden
+                skinCache[identifier] = result[1].skin
                 TriggerClientEvent('austriawien_skinmenu:applySkin', src, result[1].skin, false)
             else
                 dbg('KEIN Skin in DB für %s → First-Time-Setup', identifier)
-                -- firstLogin = true: kein Eintrag → Menü beim Client öffnen
                 TriggerClientEvent('austriawien_skinmenu:applySkin', src, '', true)
             end
         end
@@ -250,8 +341,13 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdenti
         identifier = xPlayer.identifier
     end
 
-    local skinJson = json.encode(skinData)
+    -- Format sicherstellen: immer AWskin-Format in austriawien_skins
+    local awSkin = esxFlatToAW(skinData)
+    local skinJson = json.encode(awSkin)
     dbg('saveSkin | identifier=%s | json-länge=%d', identifier, #skinJson)
+
+    -- Cache sofort aktualisieren
+    skinCache[identifier] = skinJson
 
     MySQL.update(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
@@ -260,8 +356,7 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdenti
             dbg('saveSkin: affectedRows=%d', affectedRows or 0)
             if affectedRows and affectedRows > 0 then
                 -- users.skin im ESX/Skinchanger Flat-Format schreiben
-                -- damit zr-multicharacter das Format korrekt verarbeiten kann
-                local esxData = awSkinToEsx(skinData)
+                local esxData = awSkinToEsx(awSkin)
                 local esxJson = esxData and json.encode(esxData) or skinJson
                 MySQL.update(
                     'UPDATE users SET skin = ? WHERE identifier = ?',
@@ -396,8 +491,7 @@ ESX.RegisterServerCallback('austriawien_skinmenu:getSkinByIdentifier', function(
 end)
 
 -- esx_skin:save: andere Ressourcen speichern Skin über diesen Event.
--- Wir unterstützen sowohl das Flat-Format (esx_skin/skinchanger) als auch
--- unser AWskin Nested-Format und konvertieren entsprechend für beide DBs.
+-- Immer in AWskin-Format konvertieren für österreichische_skins, Flat für users.skin.
 RegisterNetEvent('esx_skin:save')
 AddEventHandler('esx_skin:save', function(skin)
     local src     = source
@@ -405,24 +499,59 @@ AddEventHandler('esx_skin:save', function(skin)
     if not xPlayer or type(skin) ~= 'table' then return end
 
     local identifier = xPlayer.identifier
-
-    -- Format erkennen: Flat-Format hat 'sex'/'torso_1'/'mom' auf Root-Ebene
-    local awData, esxData
-    if skin.sex ~= nil or skin.torso_1 ~= nil or skin.mom ~= nil then
-        -- Flat-Format → direkt speichern (in austriawien_skins UND users.skin)
-        awData  = skin
-        esxData = skin
-        dbg('esx_skin:save: Flat-Format erkannt | %s', identifier)
-    else
-        -- AWskin-Format → für users.skin konvertieren
-        awData  = skin
-        esxData = awSkinToEsx(skin) or skin
-        dbg('esx_skin:save: AWskin-Format erkannt | %s', identifier)
-    end
+    -- Immer zu AWskin-Format normalisieren (egal ob flat oder nicht)
+    local awData  = esxFlatToAW(skin)
+    local esxData = awSkinToEsx(awData) or skin
 
     local skinJson = json.encode(awData)
     local esxJson  = json.encode(esxData)
     dbg('esx_skin:save | %s | %d Bytes', identifier, #skinJson)
+
+    skinCache[identifier] = skinJson
+    MySQL.update(
+        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
+        { Config.DatabaseTable, identifier, skinJson, skinJson },
+        function()
+            MySQL.update('UPDATE users SET skin = ? WHERE identifier = ?', { esxJson, identifier })
+        end
+    )
+end)
+
+-- ─── Skin vorladen (esx:playerLoaded) ─────────────────────────────────────────
+-- Wird serverseitig beim Charakter-Login ausgelöst. Skin wird sofort aus der
+-- DB in den Cache geladen, damit loadSkin auf Spawn ohne DB-Wartezeit antworten kann.
+AddEventHandler('esx:playerLoaded', function(xPlayer)
+    local identifier = xPlayer and xPlayer.identifier
+    if not identifier then return end
+    MySQL.query(
+        'SELECT skin FROM ?? WHERE identifier = ?',
+        { Config.DatabaseTable, identifier },
+        function(result)
+            if result and result[1] then
+                skinCache[identifier] = result[1].skin
+                dbg('esx:playerLoaded: Skin für %s vorgeladen', identifier)
+            end
+        end
+    )
+end)
+
+-- ─── Autosave bei Spieler-Disconnect ─────────────────────────────────────────
+-- Der Client sendet seinen aktuellen Skin kurz vor dem Disconnect.
+-- Als Fallback schreibt playerDropped den Cache in die DB.
+RegisterNetEvent('austriawien_skinmenu:autoSave')
+AddEventHandler('austriawien_skinmenu:autoSave', function(skinData)
+    local src     = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer or type(skinData) ~= 'table' then return end
+
+    local identifier = xPlayer.identifier
+    local awSkin   = esxFlatToAW(skinData)
+    local skinJson = json.encode(awSkin)
+    local esxData  = awSkinToEsx(awSkin)
+    local esxJson  = esxData and json.encode(esxData) or skinJson
+
+    skinCache[identifier] = skinJson
+    dbg('autoSave | %s | %d Bytes', identifier, #skinJson)
 
     MySQL.update(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
@@ -431,4 +560,37 @@ AddEventHandler('esx_skin:save', function(skin)
             MySQL.update('UPDATE users SET skin = ? WHERE identifier = ?', { esxJson, identifier })
         end
     )
+end)
+
+-- Fallback: playerDropped → Cache in DB schreiben falls kein autoSave empfangen
+AddEventHandler('playerDropped', function()
+    local src        = source
+    local identifier = nil
+    -- GetPlayerIdentifier ist immer verfügbar, auch wenn ESX den Spieler schon entfernt hat
+    for i = 0, GetNumPlayerIdentifiers(src) - 1 do
+        local id = GetPlayerIdentifier(src, i)
+        if id and (id:find('^license:') or id:find('^steam:')) then
+            identifier = id
+            break
+        end
+    end
+    if not identifier then return end
+
+    local cached = skinCache[identifier]
+    skinCache[identifier] = nil  -- Speicher freigeben
+    if cached then
+        dbg('playerDropped: Skin-Cache für %s in DB schreiben', identifier)
+        MySQL.update(
+            'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
+            { Config.DatabaseTable, identifier, cached, cached },
+            function()
+                local awSkin  = json.decode(cached)
+                local esxData = awSkin and awSkinToEsx(awSkin)
+                if esxData then
+                    MySQL.update('UPDATE users SET skin = ? WHERE identifier = ?',
+                        { json.encode(esxData), identifier })
+                end
+            end
+        )
+    end
 end)

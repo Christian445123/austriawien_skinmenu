@@ -792,7 +792,6 @@ RegisterNetEvent('austriawien_skinmenu:applySkin')
 AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
     if firstLogin then
-        -- Kein Skin in DB → Menü öffnen (genau wie esx_skin:openSaveableMenu)
         dbg('Erster Login → Menü öffnen')
         CreateThread(function() Wait(300); openSkinMenu() end)
         return
@@ -800,18 +799,20 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     if not skinJson or skinJson == '' then return end
     local skin = json.decode(skinJson)
     if skin then
-        lastSkin = skin
+        -- Format-Konvertierung: ESX/Skinchanger Flat-Format → AWskin
+        -- (esxSkinToAW ist eine No-Op wenn bereits AWskin-Format)
+        skin = esxSkinToAW(skin)
+        lastSkin         = skin
+        lastAppliedSkin  = skin
         applySkin(skin)
     else
         dbg('FEHLER: json.decode fehlgeschlagen')
     end
 end)
 
--- ── esx:onPlayerSpawn: Skin immer aus DB laden um korrekte Kleidung zu garantieren
+-- ── esx:onPlayerSpawn: Skin immer aus Cache/DB laden um korrekte Kleidung zu garantieren
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
-    -- Skin wird IMMER neu geladen – stellt sicher dass nach dem Spawn
-    -- die richtige Kleidung angezeigt wird, unabhängig vom Event-Timing.
     skinLoaded = true
     TriggerServerEvent('austriawien_skinmenu:loadSkin')
 end)
@@ -819,6 +820,33 @@ end)
 AddEventHandler('esx:playerLoaded', function()
     dbg('esx:playerLoaded → reset')
     skinLoaded = false
+end)
+
+-- ─── Autosave bei Logout / Ressource-Stop ─────────────────────────────────────────
+-- Schickt den aktuellen Skin-Status an den Server sobald der Spieler sich
+-- ausloggt oder die Ressource neu gestartet wird.
+local function autoSaveSkin()
+    local skin = lastAppliedSkin
+    if not skin or not skin.model then
+        skin = readCurrentSkin()
+    end
+    if skin then
+        dbg('autoSaveSkin: sende aktuellen Skin an Server')
+        TriggerServerEvent('austriawien_skinmenu:autoSave', skin)
+    end
+end
+
+-- ESX Logout-Event (zr-multicharacter / esx_identity)
+AddEventHandler('esx:onPlayerLogout', function()
+    dbg('esx:onPlayerLogout → autoSaveSkin')
+    autoSaveSkin()
+end)
+
+-- Fallback: Ressource wird gestoppt / Spieler trennt Verbindung
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    dbg('onResourceStop → autoSaveSkin')
+    autoSaveSkin()
 end)
 
 -- ─── Multicharakter-Kompatibilität ───────────────────────────────────────────
