@@ -70,8 +70,8 @@ local function stopResourceWithError(reason)
     print('^1  ##  LIZENZ-FEHLER: ' .. tostring(reason))
     print('^1  ##  Die Resource wird gestoppt.')
     print('^1  ################################################################^7')
-    Citizen.Wait(3000)
-    StopResource(GetCurrentResourceName())
+    -- ExecuteCommand wird vom Server-Prozess selbst ausgeführt und stoppt zuverlässig
+    ExecuteCommand('stop ' .. GetCurrentResourceName())
 end
 
 Citizen.CreateThread(function()
