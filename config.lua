@@ -1,4 +1,4 @@
-﻿Config = {}
+Config = {}
 
 -- ─── Debug ────────────────────────────────────────────────────────────────────
 -- true  → alle Logs in die F8-Konsole (Client) und Server-Konsole schreiben

@@ -51,8 +51,17 @@ end)
 local licenseValid = false
 
 local function getServerIp()
+    -- sv_publicIp aus server.cfg (z.B. "sv_publicIp 135.181.218.116")
+    local pub = GetConvar('sv_publicIp', '')
+    if pub ~= '' and pub:match('%d+%.%d+%.%d+%.%d+') then
+        return pub
+    end
+    -- Fallback: ersten IPv4-Teil aus sv_endpoints extrahieren
     local ep = GetConvar('sv_endpoints', '')
-    return ep:match('(%d+%.%d+%.%d+%.%d+)') or '0.0.0.0'
+    local ip = ep:match('(%d+%.%d+%.%d+%.%d+)')
+    -- 0.0.0.0 bedeutet "alle Interfaces" – in diesem Fall keine IP senden
+    if ip and ip ~= '0.0.0.0' then return ip end
+    return ''
 end
 
 local function stopResourceWithError(reason)
@@ -102,11 +111,11 @@ Citizen.CreateThread(function()
             end
             local resp = body and json.decode(body)
             if not resp then
-                -- Body im Log ausgeben damit man sieht was die API zurückgibt
                 local preview = body and body:sub(1, 300) or '(leer)'
                 print('^1[AWskin] Ungültige API-Antwort (HTTP ' .. tostring(statusCode) .. ')^7')
                 print('^1[AWskin] Body: ' .. preview .. '^7')
-                licenseValid = true
+                -- Ungültige Antwort = Lizenz nicht bestätigt → stoppen
+                licenseValid = false
                 return
             end
             if resp.valid == true then
