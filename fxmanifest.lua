@@ -3,7 +3,7 @@ game 'gta5'
 
 name        'austriawien_skinmenu'
 description 'AustriaWien – Skin-Menü für ESX'
-version     '1.0.4'
+version     '1.0.5'
 author      'GamingDevelopment'
 
 dependencies {
