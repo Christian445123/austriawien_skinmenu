@@ -521,6 +521,10 @@ end)
 -- Wird serverseitig beim Charakter-Login ausgelöst. Skin wird sofort aus der
 -- DB in den Cache geladen, damit loadSkin auf Spawn ohne DB-Wartezeit antworten kann.
 AddEventHandler('esx:playerLoaded', function(xPlayer)
+    -- ESX übergibt je nach Version entweder das xPlayer-Objekt oder die Source-ID (Zahl)
+    if type(xPlayer) == 'number' then
+        xPlayer = ESX.GetPlayerFromId(xPlayer)
+    end
     local identifier = xPlayer and xPlayer.identifier
     if not identifier then return end
     MySQL.query(
