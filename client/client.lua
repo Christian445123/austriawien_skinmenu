@@ -55,6 +55,102 @@ for _, s in ipairs(SLOTS) do
     SLOT_MAP[s.id] = s
 end
 
+-- ─── Skin-Cache ───────────────────────────────────────────────────────────────
+-- HeadBlend, Overlays und Gesichtszüge können NICHT direkt aus dem Ped gelesen
+-- werden. Daher cachen wir den zuletzt angewendeten Skin als Referenz.
+local lastAppliedSkin = nil
+
+-- ─── Format-Erkennung ─────────────────────────────────────────────────────────
+-- ESX/Skinchanger Flat-Format hat 'sex', 'mom', 'torso_1' auf Root-Ebene.
+-- Unser AWskin-Format hat 'components', 'props', 'face'.
+local function isEsxFlatFormat(skin)
+    if type(skin) ~= 'table' then return false end
+    return skin.components == nil and skin.face == nil and skin.props == nil
+        and (skin.sex ~= nil or skin.torso_1 ~= nil or skin.mom ~= nil or skin.hair ~= nil)
+end
+
+-- ─── ESX/Skinchanger Flat-Format → AWskin Nested Format ──────────────────────
+-- Konvertiert das esx_skin / skinchanger Flat-Format in unser AWskin-Format.
+-- Unterstützt dabei alle GTA V Overlays (0-12) und Gesichtszüge.
+local function esxSkinToAW(s)
+    if not s or type(s) ~= 'table' then return nil end
+    if not isEsxFlatFormat(s) then return s end  -- bereits unser Format
+
+    local result = {
+        model = ((s.sex or 0) == 1) and 'mp_f_freemode_01' or 'mp_m_freemode_01',
+        components = {
+            mask        = { drawable = s.mask_1        or 0, texture = s.mask_2        or 0 },
+            arms        = { drawable = s.arms          or 0, texture = s.arms_2        or 0 },
+            bag         = { drawable = s.bags_1        or 0, texture = s.bags_2        or 0 },
+            shoes       = { drawable = s.shoes_1       or 0, texture = s.shoes_2       or 0 },
+            accessories = { drawable = s.chain_1       or 0, texture = s.chain_2       or 0 },
+            undershirt  = { drawable = s.tshirt_1      or 0, texture = s.tshirt_2      or 0 },
+            armor       = { drawable = s.bproof_1      or 0, texture = s.bproof_2      or 0 },
+            decal       = { drawable = s.decals_1      or 0, texture = s.decals_2      or 0 },
+            jacket      = { drawable = s.torso_1       or 0, texture = s.torso_2       or 0 },
+            legs        = { drawable = s.pants_1       or 0, texture = s.pants_2       or 0 },
+            hair        = { drawable = s.hair          or 0, texture = 0               },
+        },
+        props = {
+            hat      = { drawable = s.helmet_1   ~= nil and s.helmet_1   or -1, texture = s.helmet_2   or 0 },
+            glasses  = { drawable = s.glasses_1  ~= nil and s.glasses_1  or -1, texture = s.glasses_2  or 0 },
+            ear      = { drawable = s.ear_1      ~= nil and s.ear_1      or -1, texture = s.ear_2      or 0 },
+            watch    = { drawable = s.watch_1    ~= nil and s.watch_1    or -1, texture = s.watch_2    or 0 },
+            bracelet = { drawable = s.bracelet_1 ~= nil and s.bracelet_1 or -1, texture = s.bracelet_2 or 0 },
+        },
+        face = {
+            hairColor1   = s.hair_color_1    or 0,
+            hairColor2   = s.hair_color_2    or 0,
+            eyeColor     = s.eye_color       or 0,
+            shapeFirst   = s.mom             or 0,
+            shapeSecond  = s.dad             or 0,
+            shapeMix     = (s.face_md_weight or 50) / 100,
+            skinFirst    = s.mom             or 0,
+            skinSecond   = s.dad             or 0,
+            skinMix      = (s.skin_md_weight or 50) / 100,
+            eyebrowColor = s.eyebrow_1       or 0,
+            -- Gesichtszüge: Skinchanger speichert Werte in -10..10, GTA V braucht -1.0..1.0
+            features = {
+                (s.nose_1        or 0) / 10,  -- feature 0: Nasenbreite
+                (s.nose_2        or 0) / 10,  -- feature 1: Nasenspitze Höhe
+                (s.nose_3        or 0) / 10,  -- feature 2: Nasenspitze Länge
+                (s.nose_4        or 0) / 10,  -- feature 3: Nasenbein Höhe
+                (s.nose_5        or 0) / 10,  -- feature 4: Nasenspitze Senkung
+                (s.nose_6        or 0) / 10,  -- feature 5: Nasenknick
+                (s.cheeks_1      or 0) / 10,  -- feature 6: Wangenbein Höhe
+                (s.cheeks_2      or 0) / 10,  -- feature 7: Wangenbein Breite
+                (s.cheeks_3      or 0) / 10,  -- feature 8: Wangenbreite
+                0,                            -- feature 9: (nicht in skinchanger)
+                (s.lip_thickness or 0) / 10,  -- feature 10: Lippendicke
+                0,                            -- feature 11: Augenöffnung
+                (s.jaw_1         or 0) / 10,  -- feature 12: Kieferbreite
+                (s.jaw_2         or 0) / 10,  -- feature 13: Kieferlänge
+                (s.chin_1        or 0) / 10,  -- feature 14: Kinnhöhe
+                (s.chin_2        or 0) / 10,  -- feature 15: Kinnlänge
+                (s.chin_3        or 0) / 10,  -- feature 16: Kinnbreite
+                0, 0, 0                        -- feature 17-19: (nicht in skinchanger)
+            },
+            -- Alle 13 GTA V Overlays (0=Hautunreinheiten bis 12=Zusatzmakel)
+            overlays = {
+                { id=0,  index=s.blemishes          or 0, opacity=s.blemishes_1_opacity          or 0 },
+                { id=1,  index=s.beard              or 0, opacity=s.beard_1_opacity              or 0, colorType=1, color1=s.beard_1          or 0, color2=s.beard_2          or 0 },
+                { id=2,  index=s.eyebrow            or 0, opacity=s.eyebrow_1_opacity            or 1, colorType=1, color1=s.eyebrow_1        or 0, color2=s.eyebrow_2        or 0 },
+                { id=3,  index=s.aging              or 0, opacity=s.aging_1_opacity              or 0 },
+                { id=4,  index=s.makeup             or 0, opacity=s.makeup_1_opacity             or 0, colorType=2, color1=s.makeup_1         or 0, color2=0 },
+                { id=5,  index=s.blush              or 0, opacity=s.blush_1_opacity              or 0, colorType=2, color1=s.blush_1          or 0, color2=0 },
+                { id=6,  index=s.complexion         or 0, opacity=s.complexion_1_opacity         or 0 },
+                { id=7,  index=s.sun_damage         or 0, opacity=s.sun_damage_1_opacity         or 0 },
+                { id=8,  index=s.lipstick           or 0, opacity=s.lipstick_1_opacity           or 0, colorType=2, color1=s.lipstick_1       or 0, color2=0 },
+                { id=9,  index=s.freckles           or 0, opacity=s.freckles_1_opacity           or 0 },
+                { id=10, index=s.chest_hair         or 0, opacity=s.chest_hair_1_opacity         or 0, colorType=1, color1=s.chest_hair_1     or 0, color2=0 },
+                { id=11, index=s.body_blemishes     or 0, opacity=s.body_blemishes_1_opacity     or 0 },
+                { id=12, index=s.add_body_blemishes or 0, opacity=s.add_body_blemishes_1_opacity or 0 },
+            },
+        }
+    }
+    return result
+end
+
 -- ─── Skin lesen ──────────────────────────────────────────────────────────────
 local function readCurrentSkin()
     local ped  = PlayerPedId()
@@ -74,18 +170,36 @@ local function readCurrentSkin()
         end
     end
 
-    -- Haarfarben
-    skin.face.hairColor1   = GetPedHairColor(ped)
-    skin.face.hairColor2   = GetPedHairHighlightColor(ped)
-    skin.face.eyeColor     = GetPedEyeColor(ped)
-    skin.face.shapeFirst   = 0
-    skin.face.shapeSecond  = 0
-    skin.face.shapeMix     = 0.5
-    skin.face.skinFirst    = 0
-    skin.face.skinSecond   = 0
-    skin.face.skinMix      = 0.5
-    skin.face.features     = {}
-    skin.face.overlays     = {}
+    -- Face-Daten: aus Cache lesen, da HeadBlend/Overlays/Gesichtszüge nicht nativ
+    -- aus dem Ped auslesbar sind. lastAppliedSkin hält immer den zuletzt gesetzten Skin.
+    if lastAppliedSkin and lastAppliedSkin.face then
+        skin.face = lastAppliedSkin.face
+    else
+        skin.face = {
+            hairColor1   = GetPedHairColor(ped),
+            hairColor2   = GetPedHairHighlightColor(ped),
+            eyeColor     = GetPedEyeColor(ped),
+            shapeFirst   = 0,  shapeSecond = 0,  shapeMix = 0.5,
+            skinFirst    = 0,  skinSecond  = 0,  skinMix  = 0.5,
+            eyebrowColor = 0,
+            features     = {},
+            overlays     = {
+                { id=0,  index=0, opacity=0 },
+                { id=1,  index=0, opacity=0, colorType=1, color1=0, color2=0 },
+                { id=2,  index=0, opacity=1, colorType=1, color1=0, color2=0 },
+                { id=3,  index=0, opacity=0 },
+                { id=4,  index=0, opacity=0, colorType=2, color1=0, color2=0 },
+                { id=5,  index=0, opacity=0, colorType=2, color1=0, color2=0 },
+                { id=6,  index=0, opacity=0 },
+                { id=7,  index=0, opacity=0 },
+                { id=8,  index=0, opacity=0, colorType=2, color1=0, color2=0 },
+                { id=9,  index=0, opacity=0 },
+                { id=10, index=0, opacity=0, colorType=1, color1=0, color2=0 },
+                { id=11, index=0, opacity=0 },
+                { id=12, index=0, opacity=0 },
+            },
+        }
+    end
 
     -- Modell (Geschlecht)
     local modelHash = GetEntityModel(ped)
@@ -183,6 +297,9 @@ local function applySkin(skin)
     end
 
     applyAppearanceToPed(ped, skin)
+    -- Skin cachen damit openSkinMenu und readCurrentSkin die Face-Daten verwenden können
+    lastAppliedSkin = skin
+    dbg('applySkin: Skin angewendet und gecacht')
 end
 
 -- ─── Max-Werte ermitteln ─────────────────────────────────────────────────────
@@ -690,13 +807,13 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     end
 end)
 
--- ── Fallback: esx:onPlayerSpawn falls playerRegistered nicht gefeuert wird ─
+-- ── esx:onPlayerSpawn: Skin immer aus DB laden um korrekte Kleidung zu garantieren
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
-    if not skinLoaded then
-        skinLoaded = true
-        TriggerServerEvent('austriawien_skinmenu:loadSkin')
-    end
+    -- Skin wird IMMER neu geladen – stellt sicher dass nach dem Spawn
+    -- die richtige Kleidung angezeigt wird, unabhängig vom Event-Timing.
+    skinLoaded = true
+    TriggerServerEvent('austriawien_skinmenu:loadSkin')
 end)
 
 AddEventHandler('esx:playerLoaded', function()
@@ -741,5 +858,29 @@ AddEventHandler('austriawien_skinmenu:applyExternalPedSkin', function(skinData, 
         CreateThread(function()
             applyAppearanceToPed(ped, skinData)
         end)
+    end
+end)
+
+-- ─── skinchanger:loadSkin abfangen ───────────────────────────────────────────
+-- zr-multicharacter (ESX) ruft skinchanger:loadSkin mit dem Skin aus users.skin auf.
+-- Wir konvertieren beide Formate (Flat + AWskin) und wenden den Skin an.
+AddEventHandler('skinchanger:loadSkin', function(skin, cb)
+    -- JSON-String → Tabelle dekodieren (ESX liefert users.skin als String)
+    if type(skin) == 'string' and #skin > 2 then
+        skin = json.decode(skin)
+    end
+    if type(skin) ~= 'table' then
+        if cb then cb() end
+        return
+    end
+    -- ESX/Skinchanger Flat-Format → AWskin konvertieren falls nötig
+    local awSkin = esxSkinToAW(skin)
+    if awSkin then
+        CreateThread(function()
+            applySkin(awSkin)
+            if cb then cb() end
+        end)
+    else
+        if cb then cb() end
     end
 end)

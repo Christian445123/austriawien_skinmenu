@@ -64,6 +64,31 @@ const FACE_FEATURE_NAMES = [
     'Kinnlänge','Kinnbreite','Kinngrübchen','Halsdicke'
 ];
 
+// ─── GTA V Overlay-Definitionen (alle 13 Overlays) ───────────────────────────
+// colorType: 0=kein Farbwähler, 1=Haarfarbe, 2=Make-Up-Farbe
+const OVERLAYS = [
+    { id: 0,  idxId: 'ov-blemishes-idx',       opId: 'ov-blemishes-op',       colorType: 0, colorEl: null             },
+    { id: 1,  idxId: 'ov-beard-idx',            opId: 'ov-beard-op',            colorType: 1, colorEl: 'beard-colors'   },
+    { id: 2,  idxId: 'ov-eyebrow-idx',          opId: 'ov-eyebrow-op',          colorType: 1, colorEl: 'eyebrow-colors' },
+    { id: 3,  idxId: 'ov-aging-idx',            opId: 'ov-aging-op',            colorType: 0, colorEl: null             },
+    { id: 4,  idxId: 'ov-makeup-idx',           opId: 'ov-makeup-op',           colorType: 2, colorEl: 'makeup-colors'  },
+    { id: 5,  idxId: 'ov-blush-idx',            opId: 'ov-blush-op',            colorType: 2, colorEl: 'blush-colors'   },
+    { id: 6,  idxId: 'ov-complexion-idx',       opId: 'ov-complexion-op',       colorType: 0, colorEl: null             },
+    { id: 7,  idxId: 'ov-sundamage-idx',        opId: 'ov-sundamage-op',        colorType: 0, colorEl: null             },
+    { id: 8,  idxId: 'ov-lipstick-idx',         opId: 'ov-lipstick-op',         colorType: 2, colorEl: 'lipstick-colors'},
+    { id: 9,  idxId: 'ov-freckles-idx',         opId: 'ov-freckles-op',         colorType: 0, colorEl: null             },
+    { id: 10, idxId: 'ov-chesthair-idx',        opId: 'ov-chesthair-op',        colorType: 1, colorEl: 'chesthair-colors'},
+    { id: 11, idxId: 'ov-bodyblemishes-idx',    opId: 'ov-bodyblemishes-op',    colorType: 0, colorEl: null             },
+    { id: 12, idxId: 'ov-addbodyblemishes-idx', opId: 'ov-addbodyblemishes-op', colorType: 0, colorEl: null             },
+];
+
+// ─── Make-Up Farbpalette (colorType 2) ───────────────────────────────────────
+const MAKEUP_COLORS = [
+    '#f5c5a3','#f4a0a0','#e87878','#cc3333','#8b1a1a','#9b4c7a',
+    '#6b2d5e','#8b5a2b','#5c3317','#e8785a','#d4864a','#f4c8a0',
+    '#b08090','#6b1a2a','#1a1a1a','#808080'
+];
+
 // ─── Ressourcen-Name ──────────────────────────────────────────────────────────
 const RESOURCE_NAME = 'austriawien_skinmenu';
 
@@ -73,8 +98,8 @@ const state = {
     skin:            { components: {}, props: {}, face: {} },
     maxValues:       {},
     slotDefs:        [],
-    selectedSlot:    null,   // id des aktiven Slots
-    selectedCat:     null,   // id der aktiven Kategorie (= slot-id)
+    selectedSlot:    null,
+    selectedCat:     null,
     hairColor1:      0,
     hairColor2:      0,
     eyeColor:        0,
@@ -82,6 +107,8 @@ const state = {
     gender:          'mp_m_freemode_01',
     imageBasePath:   'img',
     imageFormats:    ['png'],
+    // Overlay-Werte (keyed by overlay id) – wird beim openMenu gesetzt
+    overlayValues:   {},
     faceData: {
         shapeFirst: 0, shapeSecond: 0, shapeMix: 0.5,
         skinFirst: 0,  skinSecond: 0,  skinMix:  0.5,
@@ -432,16 +459,35 @@ document.getElementById('btn-cam-zoom-out').addEventListener('click',  () => nui
 
 // ─── Speichern / Abbrechen ────────────────────────────────────────────────────
 document.getElementById('btn-save').addEventListener('click', () => {
+    // Overlays aus overlayValues zusammenbauen
+    const overlaysArr = OVERLAYS.map(ov => {
+        const v = state.overlayValues[ov.id] || { index: 0, opacity: (ov.id === 2 ? 1.0 : 0.0), color1: 0, color2: 0 };
+        const entry = { id: ov.id, index: v.index, opacity: v.opacity };
+        if (ov.colorType > 0) {
+            entry.colorType = ov.colorType;
+            entry.color1    = v.color1 || 0;
+            entry.color2    = v.color2 || 0;
+        }
+        return entry;
+    });
+
     const skinToSave = {
         components: state.skin.components,
         props:      state.skin.props,
         model:      state.gender,
         face: {
-            ...state.faceData,
+            shapeFirst:   state.faceData.shapeFirst,
+            shapeSecond:  state.faceData.shapeSecond,
+            shapeMix:     state.faceData.shapeMix,
+            skinFirst:    state.faceData.skinFirst,
+            skinSecond:   state.faceData.skinSecond,
+            skinMix:      state.faceData.skinMix,
+            features:     state.faceData.features,
             hairColor1:   state.hairColor1,
             hairColor2:   state.hairColor2,
             eyeColor:     state.eyeColor,
-            eyebrowColor: state.eyebrowColor
+            eyebrowColor: state.eyebrowColor,
+            overlays:     overlaysArr
         }
     };
     nuiCallback('save', { skin: skinToSave });
@@ -491,6 +537,10 @@ function openMenu(data) {
             features:    f.features    ?? new Array(20).fill(0),
             overlays:    f.overlays    ?? []
         };
+        // Overlay-Werte aus dem geladenen Skin initialisieren
+        initOverlayValues(f.overlays ?? []);
+    } else {
+        initOverlayValues([]);
     }
 
     state.gender = (state.skin && state.skin.model) ? state.skin.model : 'mp_m_freemode_01';
@@ -509,7 +559,7 @@ function openMenu(data) {
     buildGenderButtons();
     buildHairColorPalettes();
     buildEyeColorPalette();
-    buildEyebrowColorPalette();
+    buildAllOverlays();
     buildFaceFeatureSliders();
     syncFaceSliders();
 
@@ -572,84 +622,20 @@ function sendHeadBlend() {
     nuiCallback('setHeadBlend', state.faceData);
 }
 
-// ─── Bart & Augenbrauen ───────────────────────────────────────────────────────
-// extraDataFn: optionale Funktion die zusätzliche Felder (z.B. Farbe) liefert
-function setupOverlaySlider(idxId, opId, overlayId, extraDataFn) {
-    const elIdx = document.getElementById(idxId);
-    const elOp  = document.getElementById(opId);
-    if (!elIdx || !elOp) return;
-
-    const send = () => {
-        const data = {
-            overlayId,
-            index:   parseInt(elIdx.value),
-            opacity: parseInt(elOp.value) / 100
-        };
-        if (extraDataFn) Object.assign(data, extraDataFn());
-        nuiCallback('setHeadOverlay', data);
-    };
-
-    elIdx.addEventListener('input', () => {
-        document.getElementById(`${idxId}-val`).textContent = elIdx.value;
-        send();
-    });
-    elOp.addEventListener('input', () => {
-        document.getElementById(`${opId}-val`).textContent = (parseInt(elOp.value) / 100).toFixed(1);
-        send();
-    });
-}
-
-setupOverlaySlider('ov-eyebrow-idx', 'ov-eyebrow-op', 2, () => ({
-    colorType: 1, color1: state.eyebrowColor, color2: 0
-}));
-setupOverlaySlider('ov-beard-idx',   'ov-beard-op',   1);
-
-// ─── Augenbrauen-Farb-Palette ─────────────────────────────────────────────────
-function sendEyebrowOverlay() {
-    const idxEl = document.getElementById('ov-eyebrow-idx');
-    const opEl  = document.getElementById('ov-eyebrow-op');
-    nuiCallback('setHeadOverlay', {
-        overlayId: 2,
-        index:     idxEl ? parseInt(idxEl.value) : 0,
-        opacity:   opEl  ? parseInt(opEl.value) / 100 : 1.0,
-        colorType: 1,
-        color1:    state.eyebrowColor,
-        color2:    0
-    });
-}
-
-function buildEyebrowColorPalette() {
-    const el = document.getElementById('eyebrow-colors');
-    if (!el) return;
-    el.innerHTML = '';
-    HAIR_COLORS.forEach((hex, i) => {
-        const chip = document.createElement('div');
-        chip.className = 'hair-color-chip' + (i === state.eyebrowColor ? ' active' : '');
-        chip.style.background = hex;
-        chip.title = `Augenbrauenfarbe ${i}`;
-        chip.addEventListener('click', () => {
-            state.eyebrowColor = i;
-            el.querySelectorAll('.hair-color-chip').forEach((c, j) => {
-                c.classList.toggle('active', j === i);
-            });
-            sendEyebrowOverlay();
-        });
-        el.appendChild(chip);
-    });
-}
-
 // ─── Gesichtszug-Slider aufbauen ──────────────────────────────────────────────
 function buildFaceFeatureSliders() {
     const container = document.getElementById('face-features-list');
     container.innerHTML = '';
+    const features = state.faceData.features || [];
     FACE_FEATURE_NAMES.forEach((name, i) => {
+        const initVal = features[i] ?? 0;
         const row = document.createElement('div');
         row.className = 'face-row';
         row.innerHTML = `
             <label>${name}</label>
-            <input type="range" min="-100" max="100" value="0"
+            <input type="range" min="-100" max="100" value="${Math.round(initVal * 100)}"
                    class="face-slider" id="ff-${i}">
-            <span class="face-slider-val" id="ff-${i}-val">0.00</span>`;
+            <span class="face-slider-val" id="ff-${i}-val">${initVal.toFixed(2)}</span>`;
         container.appendChild(row);
 
         const el = row.querySelector(`#ff-${i}`);
@@ -661,6 +647,128 @@ function buildFaceFeatureSliders() {
         });
     });
 }
+
+// ─── Overlay-System ───────────────────────────────────────────────────────────
+// Initialisiert state.overlayValues aus dem geladenen Skin
+function initOverlayValues(overlaysArray) {
+    // Defaults für alle Overlays setzen
+    OVERLAYS.forEach(ov => {
+        state.overlayValues[ov.id] = {
+            index:   0,
+            opacity: (ov.id === 2) ? 1.0 : 0.0,  // Augenbrauen standardmäßig sichtbar
+            color1:  0,
+            color2:  0
+        };
+    });
+    // Werte aus dem geladenen Skin überschreiben
+    (overlaysArray || []).forEach(ov => {
+        if (state.overlayValues[ov.id] !== undefined) {
+            state.overlayValues[ov.id] = {
+                index:   ov.index   ?? 0,
+                opacity: ov.opacity ?? (ov.id === 2 ? 1.0 : 0.0),
+                color1:  ov.color1  ?? 0,
+                color2:  ov.color2  ?? 0
+            };
+        }
+    });
+    // Augenbrauenfarbe mit eyebrowColor synchronisieren
+    if (state.overlayValues[2]) {
+        state.overlayValues[2].color1 = state.eyebrowColor ?? 0;
+    }
+}
+
+// Sendet ein Overlay an die Lua-Seite
+function sendOverlay(ovDef) {
+    const v = state.overlayValues[ovDef.id] || { index: 0, opacity: 0, color1: 0, color2: 0 };
+    const data = {
+        overlayId: ovDef.id,
+        index:     v.index,
+        opacity:   v.opacity
+    };
+    if (ovDef.colorType > 0) {
+        data.colorType = ovDef.colorType;
+        data.color1    = v.color1;
+        data.color2    = v.color2;
+    }
+    nuiCallback('setHeadOverlay', data);
+}
+
+// Baut eine Farbpalette auf (Haar- oder Make-Up-Farben)
+function buildOverlayColorPalette(containerId, ovDef) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    const palette = (ovDef.colorType === 2) ? MAKEUP_COLORS : HAIR_COLORS;
+    const curColor = (state.overlayValues[ovDef.id] || {}).color1 ?? 0;
+    palette.forEach((hex, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'hair-color-chip' + (i === curColor ? ' active' : '');
+        chip.style.background = hex;
+        chip.title = `Farbe ${i}`;
+        chip.addEventListener('click', () => {
+            if (!state.overlayValues[ovDef.id]) state.overlayValues[ovDef.id] = { index: 0, opacity: 0, color1: 0, color2: 0 };
+            state.overlayValues[ovDef.id].color1 = i;
+            // Augenbrauenfarbe auch in state.eyebrowColor spiegeln
+            if (ovDef.id === 2) state.eyebrowColor = i;
+            el.querySelectorAll('.hair-color-chip').forEach((c, j) => c.classList.toggle('active', j === i));
+            sendOverlay(ovDef);
+        });
+        el.appendChild(chip);
+    });
+}
+
+// Richtet die Slider für ein Overlay ein (nur einmal beim Seitenload)
+function setupOverlayListeners(ovDef) {
+    const elIdx = document.getElementById(ovDef.idxId);
+    const elOp  = document.getElementById(ovDef.opId);
+    if (!elIdx || !elOp) return;
+
+    const idxValEl = document.getElementById(`${ovDef.idxId}-val`);
+    const opValEl  = document.getElementById(`${ovDef.opId}-val`);
+
+    elIdx.addEventListener('input', () => {
+        const idx = parseInt(elIdx.value);
+        if (!state.overlayValues[ovDef.id]) state.overlayValues[ovDef.id] = { index: 0, opacity: 0, color1: 0, color2: 0 };
+        state.overlayValues[ovDef.id].index = idx;
+        if (idxValEl) idxValEl.textContent = idx;
+        sendOverlay(ovDef);
+    });
+    elOp.addEventListener('input', () => {
+        const op = parseInt(elOp.value) / 100;
+        if (!state.overlayValues[ovDef.id]) state.overlayValues[ovDef.id] = { index: 0, opacity: 0, color1: 0, color2: 0 };
+        state.overlayValues[ovDef.id].opacity = op;
+        if (opValEl) opValEl.textContent = op.toFixed(1);
+        sendOverlay(ovDef);
+    });
+}
+
+// Synchronisiert den Slider-Wert aus state.overlayValues (bei jedem Menüöffnen)
+function syncOverlaySlider(ovDef) {
+    const elIdx = document.getElementById(ovDef.idxId);
+    const elOp  = document.getElementById(ovDef.opId);
+    if (!elIdx || !elOp) return;
+
+    const v = state.overlayValues[ovDef.id] || { index: 0, opacity: (ovDef.id === 2 ? 1.0 : 0.0) };
+    elIdx.value = v.index;
+    elOp.value  = Math.round(v.opacity * 100);
+    const idxValEl = document.getElementById(`${ovDef.idxId}-val`);
+    const opValEl  = document.getElementById(`${ovDef.opId}-val`);
+    if (idxValEl) idxValEl.textContent = v.index;
+    if (opValEl)  opValEl.textContent  = v.opacity.toFixed(1);
+}
+
+// Hauptfunktion: Synchronisiert ALLE Overlay-Slider + baut Farbpaletten neu auf
+function buildAllOverlays() {
+    OVERLAYS.forEach(ovDef => {
+        syncOverlaySlider(ovDef);
+        if (ovDef.colorType > 0 && ovDef.colorEl) {
+            buildOverlayColorPalette(ovDef.colorEl, ovDef);
+        }
+    });
+}
+
+// Einmalig beim Laden: Event-Listener für alle Overlay-Slider registrieren
+OVERLAYS.forEach(ovDef => setupOverlayListeners(ovDef));
 
 // ─── Geschlecht-Buttons ──────────────────────────────────────────────────────
 function buildGenderButtons() {
