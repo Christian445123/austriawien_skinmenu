@@ -127,7 +127,7 @@ Citizen.CreateThread(function()
             end
         end,
         'POST',
-        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName .. '&api_secret=' .. apiSecret,
+        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName .. '&version=' .. RESOURCE_VERSION .. '&api_secret=' .. apiSecret,
         { ['Content-Type'] = 'application/x-www-form-urlencoded' }
     )
 
