@@ -98,34 +98,9 @@ local function readCurrentSkin()
     return skin
 end
 
--- ─── Skin anwenden ───────────────────────────────────────────────────────────
-local function applySkin(skin)
-    local ped = PlayerPedId()
-
-    -- Modell wechseln falls nötig (Wait() ist ok – läuft immer in Citizen-Thread)
-    if skin.model then
-        local targetHash = GetHashKey(skin.model)
-        if GetEntityModel(ped) ~= targetHash then
-            local valid = false
-            for _, m in ipairs(Config.AllowedModels) do
-                if m == skin.model then valid = true; break end
-            end
-            if valid then
-                dbg('applySkin: Modellwechsel → %s', skin.model)
-                RequestModel(targetHash)
-                local t = 0
-                while not HasModelLoaded(targetHash) and t < 50 do
-                    Wait(100); t = t + 1
-                end
-                if HasModelLoaded(targetHash) then
-                    SetPlayerModel(PlayerId(), targetHash)
-                    SetModelAsNoLongerNeeded(targetHash)
-                    ped = PlayerPedId()
-                end
-            end
-        end
-    end
-
+-- ─── Appearance auf beliebigen Ped anwenden (kein Modellwechsel) ─────────────
+-- Wird intern von applySkin UND von Multicharakter-Previews genutzt.
+local function applyAppearanceToPed(ped, skin)
     if skin.components then
         for id, data in pairs(skin.components) do
             local slot = SLOT_MAP[id]
@@ -177,6 +152,37 @@ local function applySkin(skin)
             SetPedHeadOverlayColor(ped, 2, 1, f.eyebrowColor, 0)
         end
     end
+end
+
+-- ─── Skin anwenden (Spieler-Ped inkl. Modellwechsel) ─────────────────────────
+local function applySkin(skin)
+    local ped = PlayerPedId()
+
+    -- Modell wechseln falls nötig (Wait() ist ok – läuft immer in Citizen-Thread)
+    if skin.model then
+        local targetHash = GetHashKey(skin.model)
+        if GetEntityModel(ped) ~= targetHash then
+            local valid = false
+            for _, m in ipairs(Config.AllowedModels) do
+                if m == skin.model then valid = true; break end
+            end
+            if valid then
+                dbg('applySkin: Modellwechsel → %s', skin.model)
+                RequestModel(targetHash)
+                local t = 0
+                while not HasModelLoaded(targetHash) and t < 50 do
+                    Wait(100); t = t + 1
+                end
+                if HasModelLoaded(targetHash) then
+                    SetPlayerModel(PlayerId(), targetHash)
+                    SetModelAsNoLongerNeeded(targetHash)
+                    ped = PlayerPedId()
+                end
+            end
+        end
+    end
+
+    applyAppearanceToPed(ped, skin)
 end
 
 -- ─── Max-Werte ermitteln ─────────────────────────────────────────────────────
@@ -696,4 +702,44 @@ end)
 AddEventHandler('esx:playerLoaded', function()
     dbg('esx:playerLoaded → reset')
     skinLoaded = false
+end)
+
+-- ─── Multicharakter-Kompatibilität ───────────────────────────────────────────
+-- Export: Kleidung/Gesicht auf einen beliebigen Preview-Ped anwenden.
+-- Aufruf aus dem Multichar-Script:
+--   exports['austriawien_skinmenu']:applyPedSkin(ped, skinDataTableOrJson)
+exports('applyPedSkin', function(ped, skinData)
+    if type(skinData) == 'string' then
+        skinData = json.decode(skinData)
+    end
+    if not skinData then return end
+    if not DoesEntityExist(ped) then return end
+    CreateThread(function()
+        -- Falls das Ped-Modell noch nicht geladen ist, kurz warten
+        if skinData.model then
+            local targetHash = GetHashKey(skinData.model)
+            if GetEntityModel(ped) ~= targetHash then
+                RequestModel(targetHash)
+                local t = 0
+                while not HasModelLoaded(targetHash) and t < 20 do
+                    Wait(100); t = t + 1
+                end
+            end
+        end
+        applyAppearanceToPed(ped, skinData)
+    end)
+end)
+
+-- Netzwerk-Event: Andere Ressourcen können diesen Event triggern um einen
+-- lokalen Ped mit einem gespeicherten Skin auszustatten.
+-- Beispiel:  TriggerEvent('austriawien_skinmenu:applyExternalPedSkin', skinData, ped)
+AddEventHandler('austriawien_skinmenu:applyExternalPedSkin', function(skinData, ped)
+    if type(skinData) == 'string' then
+        skinData = json.decode(skinData)
+    end
+    if skinData and ped and DoesEntityExist(ped) then
+        CreateThread(function()
+            applyAppearanceToPed(ped, skinData)
+        end)
+    end
 end)

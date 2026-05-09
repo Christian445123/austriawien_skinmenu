@@ -263,21 +263,48 @@ end)
 -- Damit alle Ressourcen die ESX.TriggerServerCallback('esx_skin:getPlayerSkin')
 -- oder TriggerServerEvent('esx_skin:save') nutzen, nahtlos funktionieren.
 
-ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    if not xPlayer then cb(nil, nil) return end
+ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb, identifier)
+    -- Manche Multichar-Ressourcen übergeben einen Identifier-Parameter
+    -- (z.B. ESX.TriggerServerCallback('esx_skin:getPlayerSkin', cb, 'license:abc123'))
+    -- Falls kein Identifier angegeben, den des aufrufenden Spielers verwenden.
+    local targetIdentifier = identifier
+    if not targetIdentifier or targetIdentifier == '' then
+        local xPlayer = ESX.GetPlayerFromId(source)
+        if not xPlayer then cb(nil, nil) return end
+        targetIdentifier = xPlayer.identifier
+    end
 
-    local identifier = xPlayer.identifier
     MySQL.query(
         'SELECT skin FROM ?? WHERE identifier = ?',
-        { Config.DatabaseTable, identifier },
+        { Config.DatabaseTable, targetIdentifier },
         function(result)
             local skin = nil
             if result and result[1] and result[1].skin then
                 skin = json.decode(result[1].skin)
             end
-            dbg('esx_skin:getPlayerSkin | %s | skin=%s', identifier, skin and 'ja' or 'nil')
+            dbg('esx_skin:getPlayerSkin | %s | skin=%s', targetIdentifier, skin and 'ja' or 'nil')
             cb(skin, nil)
+        end
+    )
+end)
+
+-- ─── Multicharakter: Skin per Identifier abrufen (raw JSON) ──────────────────
+-- Aufruf aus dem Multichar-Script:
+--   ESX.TriggerServerCallback('austriawien_skinmenu:getSkinByIdentifier', function(skinJson) ... end, identifier)
+-- Gibt das rohe JSON zurück (oder nil falls kein Skin vorhanden).
+ESX.RegisterServerCallback('austriawien_skinmenu:getSkinByIdentifier', function(source, cb, identifier)
+    if not identifier or identifier == '' then cb(nil) return end
+    MySQL.query(
+        'SELECT skin FROM ?? WHERE identifier = ?',
+        { Config.DatabaseTable, identifier },
+        function(result)
+            if result and result[1] and result[1].skin then
+                dbg('getSkinByIdentifier: Skin für %s gefunden', identifier)
+                cb(result[1].skin)
+            else
+                dbg('getSkinByIdentifier: kein Skin für %s', identifier)
+                cb(nil)
+            end
         end
     )
 end)
