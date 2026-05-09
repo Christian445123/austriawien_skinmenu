@@ -270,7 +270,7 @@ ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb, identi
     local targetIdentifier = identifier
     if not targetIdentifier or targetIdentifier == '' then
         local xPlayer = ESX.GetPlayerFromId(source)
-        if not xPlayer then cb(nil, nil) return end
+        if not xPlayer then cb(nil) return end
         targetIdentifier = xPlayer.identifier
     end
 
@@ -283,7 +283,7 @@ ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb, identi
                 skin = json.decode(result[1].skin)
             end
             dbg('esx_skin:getPlayerSkin | %s | skin=%s', targetIdentifier, skin and 'ja' or 'nil')
-            cb(skin, nil)
+            cb(skin)
         end
     )
 end)
