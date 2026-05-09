@@ -172,6 +172,10 @@ local function applySkin(skin)
                 end
             end
         end
+        -- Augenbrauenfarbe wiederherstellen (separat gespeichert)
+        if f.eyebrowColor then
+            SetPedHeadOverlayColor(ped, 2, 1, f.eyebrowColor, 0)
+        end
     end
 end
 
@@ -270,6 +274,14 @@ local function openSkinMenu()
     currentSkin  = readCurrentSkin()
     isMenuOpen   = true
 
+    -- HeadBlend initialisieren – nötig damit SetPedEyeColor sofort wirkt
+    local f = currentSkin.face or {}
+    SetPedHeadBlendData(ped,
+        f.shapeFirst  or 0, f.shapeSecond or 0, 0,
+        f.skinFirst   or 0, f.skinSecond  or 0, 0,
+        f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
+    )
+
     if Config.FreezeOnOpen then
         FreezeEntityPosition(ped, true)
         dbg('Ped eingefroren')
@@ -278,6 +290,18 @@ local function openSkinMenu()
     DisplayRadar(false)
     createCamera()
     SetNuiFocus(true, true)
+
+    -- Charakter-Name aus ESX-Daten lesen
+    local charName   = 'Unbekannt'
+    local charGender = (currentSkin.model == 'mp_f_freemode_01') and 'Weiblich' or 'Männlich'
+    local playerData = ESX and ESX.GetPlayerData and ESX.GetPlayerData() or nil
+    if playerData then
+        if playerData.firstName and playerData.lastName then
+            charName = playerData.firstName .. ' ' .. playerData.lastName
+        elseif playerData.name then
+            charName = playerData.name
+        end
+    end
 
     -- Slot-Definitionen als vereinfachtes Array für JS aufbereiten
     local slotDefs = {}
@@ -297,7 +321,9 @@ local function openSkinMenu()
         maxValues     = getMaxValues(),
         slotDefs      = slotDefs,
         imageBasePath = Config.ImageBasePath or 'img',
-        imageFormats  = Config.ImageFormats  or { 'png' }
+        imageFormats  = Config.ImageFormats  or { 'png' },
+        charName      = charName,
+        charGender    = charGender
     })
     dbg('NUI-Nachricht openMenu gesendet | %d Slots | %d maxValues', #slotDefs, (function() local n=0 for _ in pairs(getMaxValues()) do n=n+1 end return n end)())
 end

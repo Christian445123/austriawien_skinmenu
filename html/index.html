@@ -16,6 +16,10 @@
             <div class="header-brand"><span class="brand-dot"></span>CHARAKTER</div>
             <button class="btn-close" id="btn-close" title="Schlie&#xDF;en (ESC)">&#x2715;</button>
         </div>
+        <div id="char-info" class="char-info-box">
+            <span class="char-info-name" id="char-info-name">&#x2014;</span>
+            <span class="char-info-gender" id="char-info-gender"></span>
+        </div>
         <div class="avatar-scroll">
 
             <div class="body-zone" id="zone-head" data-zone="head">
@@ -142,6 +146,8 @@
                         <div class="face-section-title">BART &amp; AUGENBRAUEN</div>
                         <div class="face-row"><label>Augenbrauen Stil (0-33)</label><input type="range" min="0" max="33" value="0" id="ov-eyebrow-idx" class="face-slider"><span class="face-slider-val" id="ov-eyebrow-idx-val">0</span></div>
                         <div class="face-row"><label>Augenbrauen Staerke</label><input type="range" min="0" max="100" value="100" id="ov-eyebrow-op" class="face-slider"><span class="face-slider-val" id="ov-eyebrow-op-val">1.0</span></div>
+                        <div class="face-row"><label>Augenbrauen Farbe</label></div>
+                        <div class="hair-colors" id="eyebrow-colors"></div>
                         <div class="face-row"><label>Bart Stil (0-28)</label><input type="range" min="0" max="28" value="0" id="ov-beard-idx" class="face-slider"><span class="face-slider-val" id="ov-beard-idx-val">0</span></div>
                         <div class="face-row"><label>Bart Staerke</label><input type="range" min="0" max="100" value="0" id="ov-beard-op" class="face-slider"><span class="face-slider-val" id="ov-beard-op-val">0.0</span></div>
                     </div>

@@ -19,16 +19,40 @@ const HAIR_COLORS = [
     '#806040','#604020','#402010','#200c04'
 ];
 
-// ─── GTA V Augenfarben-Palette (32 Farben) ───────────────────────────────────
+// ─── GTA V Augenfarben-Palette (31 Farben, Index 0-30) ──────────────────────
+// Hex-Werte entsprechen den tatsächlichen GTA V Augenfarben möglichst genau
 const EYE_COLORS = [
-    '#1a1a1a','#2e8b57','#1a4a1a','#90ee90',
-    '#1e3a8a','#87ceeb','#00ced1','#8b4513',
-    '#4a2800','#d4a017','#8b6914','#c8a46a',
-    '#808080','#404040','#c0c0c0','#ffc0cb',
-    '#cc0000','#daa520','#800080','#9370db',
-    '#add8e6','#00bcd4','#ff8c00','#228b22',
-    '#ff6600','#a0522d','#3e1f00','#f5f5f5',
-    '#b0d4f1','#b0f0b0','#d0b0f0','#e8e8e8'
+    '#3d1a00', // 0  – Dunkelbraun
+    '#2e7d32', // 1  – Smaragdgrün
+    '#1b4d1b', // 2  – Dunkelgrün
+    '#7dce7d', // 3  – Hellgrün / Leuchtgrün
+    '#1a3a8c', // 4  – Dunkelblau
+    '#6ab0d4', // 5  – Hellblau
+    '#009688', // 6  – Blaugrün / Türkis
+    '#7b4020', // 7  – Mittelbraun
+    '#2a0e00', // 8  – Sehr dunkelbraun
+    '#c8960a', // 9  – Gold / Gelb
+    '#9b7614', // 10 – Dunkles Gold
+    '#c8a46a', // 11 – Hellbraun / Haselnuss
+    '#707070', // 12 – Grau
+    '#3a3a3a', // 13 – Dunkelgrau
+    '#b8b8b8', // 14 – Hellgrau
+    '#f4a7b9', // 15 – Hellrosa
+    '#c0000a', // 16 – Rot
+    '#d4a017', // 17 – Dunkelgelb / Goldgelb
+    '#6a0dad', // 18 – Lila
+    '#9370db', // 19 – Mittellila
+    '#90c8e8', // 20 – Zartes Blau
+    '#00bcd4', // 21 – Cyan
+    '#e67e00', // 22 – Orange
+    '#1e7a1e', // 23 – Waldgrün
+    '#e05a00', // 24 – Dunkelorange
+    '#8b2500', // 25 – Dunkelrot
+    '#150600', // 26 – Fast Schwarz (Schwarz-Braun)
+    '#f0f0f0', // 27 – Weiß
+    '#a8c8e8', // 28 – Lavendel-Blau
+    '#a8f0a8', // 29 – Mintgrün
+    '#d0a8f0'  // 30 – Lavendel
 ];
 
 // ─── Gesichtszug-Namen ────────────────────────────────────────────────────────
@@ -54,6 +78,7 @@ const state = {
     hairColor1:      0,
     hairColor2:      0,
     eyeColor:        0,
+    eyebrowColor:    0,
     gender:          'mp_m_freemode_01',
     imageBasePath:   'img',
     imageFormats:    ['png'],
@@ -413,9 +438,10 @@ document.getElementById('btn-save').addEventListener('click', () => {
         model:      state.gender,
         face: {
             ...state.faceData,
-            hairColor1: state.hairColor1,
-            hairColor2: state.hairColor2,
-            eyeColor:   state.eyeColor
+            hairColor1:   state.hairColor1,
+            hairColor2:   state.hairColor2,
+            eyeColor:     state.eyeColor,
+            eyebrowColor: state.eyebrowColor
         }
     };
     nuiCallback('save', { skin: skinToSave });
@@ -451,10 +477,11 @@ function openMenu(data) {
 
     if (state.skin.face) {
         const f = state.skin.face;
-        state.hairColor1 = f.hairColor1 ?? 0;
-        state.hairColor2 = f.hairColor2 ?? 0;
-        state.eyeColor   = f.eyeColor   ?? 0;
-        state.faceData   = {
+        state.hairColor1   = f.hairColor1   ?? 0;
+        state.hairColor2   = f.hairColor2   ?? 0;
+        state.eyeColor     = f.eyeColor     ?? 0;
+        state.eyebrowColor = f.eyebrowColor ?? 0;
+        state.faceData     = {
             shapeFirst:  f.shapeFirst  ?? 0,
             shapeSecond: f.shapeSecond ?? 0,
             shapeMix:    f.shapeMix    ?? 0.5,
@@ -468,12 +495,21 @@ function openMenu(data) {
 
     state.gender = (state.skin && state.skin.model) ? state.skin.model : 'mp_m_freemode_01';
 
+    // Charakterinfo anzeigen
+    const charName   = data.charName   || '\u2014';
+    const charGender = data.charGender || (state.gender === 'mp_f_freemode_01' ? 'Weiblich' : 'M\u00e4nnlich');
+    const nameEl   = document.getElementById('char-info-name');
+    const genderEl = document.getElementById('char-info-gender');
+    if (nameEl)   nameEl.textContent   = charName;
+    if (genderEl) genderEl.textContent = charGender;
+
     buildCategoryNav();
     refreshAllSlots();
     setupEquipSlotDropTargets();
     buildGenderButtons();
     buildHairColorPalettes();
     buildEyeColorPalette();
+    buildEyebrowColorPalette();
     buildFaceFeatureSliders();
     syncFaceSliders();
 
@@ -537,17 +573,20 @@ function sendHeadBlend() {
 }
 
 // ─── Bart & Augenbrauen ───────────────────────────────────────────────────────
-function setupOverlaySlider(idxId, opId, overlayId) {
+// extraDataFn: optionale Funktion die zusätzliche Felder (z.B. Farbe) liefert
+function setupOverlaySlider(idxId, opId, overlayId, extraDataFn) {
     const elIdx = document.getElementById(idxId);
     const elOp  = document.getElementById(opId);
     if (!elIdx || !elOp) return;
 
     const send = () => {
-        nuiCallback('setHeadOverlay', {
+        const data = {
             overlayId,
             index:   parseInt(elIdx.value),
             opacity: parseInt(elOp.value) / 100
-        });
+        };
+        if (extraDataFn) Object.assign(data, extraDataFn());
+        nuiCallback('setHeadOverlay', data);
     };
 
     elIdx.addEventListener('input', () => {
@@ -560,8 +599,44 @@ function setupOverlaySlider(idxId, opId, overlayId) {
     });
 }
 
-setupOverlaySlider('ov-eyebrow-idx', 'ov-eyebrow-op', 2);
+setupOverlaySlider('ov-eyebrow-idx', 'ov-eyebrow-op', 2, () => ({
+    colorType: 1, color1: state.eyebrowColor, color2: 0
+}));
 setupOverlaySlider('ov-beard-idx',   'ov-beard-op',   1);
+
+// ─── Augenbrauen-Farb-Palette ─────────────────────────────────────────────────
+function sendEyebrowOverlay() {
+    const idxEl = document.getElementById('ov-eyebrow-idx');
+    const opEl  = document.getElementById('ov-eyebrow-op');
+    nuiCallback('setHeadOverlay', {
+        overlayId: 2,
+        index:     idxEl ? parseInt(idxEl.value) : 0,
+        opacity:   opEl  ? parseInt(opEl.value) / 100 : 1.0,
+        colorType: 1,
+        color1:    state.eyebrowColor,
+        color2:    0
+    });
+}
+
+function buildEyebrowColorPalette() {
+    const el = document.getElementById('eyebrow-colors');
+    if (!el) return;
+    el.innerHTML = '';
+    HAIR_COLORS.forEach((hex, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'hair-color-chip' + (i === state.eyebrowColor ? ' active' : '');
+        chip.style.background = hex;
+        chip.title = `Augenbrauenfarbe ${i}`;
+        chip.addEventListener('click', () => {
+            state.eyebrowColor = i;
+            el.querySelectorAll('.hair-color-chip').forEach((c, j) => {
+                c.classList.toggle('active', j === i);
+            });
+            sendEyebrowOverlay();
+        });
+        el.appendChild(chip);
+    });
+}
 
 // ─── Gesichtszug-Slider aufbauen ──────────────────────────────────────────────
 function buildFaceFeatureSliders() {
@@ -611,6 +686,9 @@ async function applyGender(model) {
     if (result && result.ok) {
         state.gender = model;
         buildGenderButtons();
+        // Geschlechtsanzeige in Charakterinfo aktualisieren
+        const genderEl = document.getElementById('char-info-gender');
+        if (genderEl) genderEl.textContent = (model === 'mp_f_freemode_01') ? 'Weiblich' : 'Männlich';
         // Kleidungs-Werte zurücksetzen (neues Modell hat andere Varianten)
         state.skin.components = {};
         state.skin.props      = {};
