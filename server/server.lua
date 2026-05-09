@@ -68,14 +68,21 @@ end
 Citizen.CreateThread(function()
     Citizen.Wait(1000)  -- warten bis Config geladen ist
 
-    local apiUrl    = (ServerSecrets and ServerSecrets.LicenseApiUrl)        or ''
-    local apiSecret = (ServerSecrets and ServerSecrets.LicenseApiSecret)     or ''
-    local resName   = (ServerSecrets and ServerSecrets.LicenseResourceName)  or GetCurrentResourceName()
-    local licKey    = (ServerSecrets and ServerSecrets.LicenseKey)           or ''
+    -- ServerSecrets wird aus server_secrets.lua geladen (server_script, vor dieser Datei)
+    if type(ServerSecrets) ~= 'table' then
+        print('^1[AWskin] FEHLER: server/server_secrets.lua nicht geladen! Bitte ensure prüfen.^7')
+        licenseValid = true
+        return
+    end
+
+    local apiUrl    = ServerSecrets.LicenseApiUrl       or ''
+    local apiSecret = ServerSecrets.LicenseApiSecret    or ''
+    local resName   = ServerSecrets.LicenseResourceName or GetCurrentResourceName()
+    local licKey    = ServerSecrets.LicenseKey          or ''
     local serverIp  = getServerIp()
 
     -- Kein Lizenzserver konfiguriert – überspringen
-    if apiUrl == '' or apiUrl:find('DEINE%-DOMAIN') then
+    if apiUrl == '' then
         print('^3[AWskin] Kein Lizenzserver konfiguriert – überspringe API-Prüfung.^7')
         licenseValid = true
         return
