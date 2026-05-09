@@ -95,6 +95,7 @@ const RESOURCE_NAME = 'austriawien_skinmenu';
 // ─── Zustand ──────────────────────────────────────────────────────────────────
 const state = {
     open:            false,
+    dirty:           false,   // true wenn Änderungen noch nicht gespeichert
     skin:            { components: {}, props: {}, face: {} },
     maxValues:       {},
     slotDefs:        [],
@@ -342,6 +343,7 @@ function attachCardEvents(card) {
 async function applyDrawable(slotId, drawableId) {
     const tex = (drawableId === -1) ? 0 : currentTexture(slotId);
     setDrawable(slotId, drawableId);
+    markDirty();
 
     const result = await nuiCallback('updateSlot', {
         id: slotId, drawable: drawableId, texture: tex
@@ -369,6 +371,7 @@ async function applyDrawable(slotId, drawableId) {
 async function applyTexture(slotId, texId) {
     const draw = currentDrawable(slotId);
     setTexture(slotId, texId);
+    markDirty();
 
     await nuiCallback('updateSlot', { id: slotId, drawable: draw, texture: texId });
     refreshSlotDisplay(slotId);
@@ -457,6 +460,29 @@ document.getElementById('btn-cam-down').addEventListener('click',      () => nui
 document.getElementById('btn-cam-zoom-in').addEventListener('click',   () => nuiCallback('zoomCamera',      { direction: 'in'   }));
 document.getElementById('btn-cam-zoom-out').addEventListener('click',  () => nuiCallback('zoomCamera',      { direction: 'out'  }));
 
+// ─── Ungespeicherte-Änderungen Tracking ─────────────────────────────────────
+function markDirty() { state.dirty = true; }
+
+// Zeigt Bestätigungsdialog wenn Änderungen nicht gespeichert wurden.
+// Wenn kein dirty: direkt schließen.
+function confirmClose() {
+    if (!state.dirty) {
+        nuiCallback('cancel', {});
+        closeMenu();
+        return;
+    }
+    document.getElementById('unsaved-backdrop').classList.remove('hidden');
+}
+
+document.getElementById('btn-unsaved-stay').addEventListener('click', () => {
+    document.getElementById('unsaved-backdrop').classList.add('hidden');
+});
+document.getElementById('btn-unsaved-leave').addEventListener('click', () => {
+    document.getElementById('unsaved-backdrop').classList.add('hidden');
+    nuiCallback('cancel', {});
+    closeMenu();
+});
+
 // ─── Speichern / Abbrechen ────────────────────────────────────────────────────
 document.getElementById('btn-save').addEventListener('click', () => {
     // Overlays aus overlayValues zusammenbauen
@@ -491,30 +517,30 @@ document.getElementById('btn-save').addEventListener('click', () => {
         }
     };
     nuiCallback('save', { skin: skinToSave });
+    state.dirty = false;
     closeMenu();
 });
 
-document.getElementById('btn-cancel').addEventListener('click', () => {
-    nuiCallback('cancel', {});
-    closeMenu();
-});
-
-document.getElementById('btn-close').addEventListener('click', () => {
-    nuiCallback('cancel', {});
-    closeMenu();
-});
+document.getElementById('btn-cancel').addEventListener('click', () => confirmClose());
+document.getElementById('btn-close').addEventListener('click',  () => confirmClose());
 
 // ESC schließt ebenfalls
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && state.open) {
-        nuiCallback('cancel', {});
-        closeMenu();
+        // Wenn das Modal gerade offen ist: Modal schließen, nicht das Menü
+        const backdrop = document.getElementById('unsaved-backdrop');
+        if (!backdrop.classList.contains('hidden')) {
+            backdrop.classList.add('hidden');
+            return;
+        }
+        confirmClose();
     }
 });
 
 // ─── Menü öffnen / schließen ─────────────────────────────────────────────────
 function openMenu(data) {
     state.open          = true;
+    state.dirty         = false;  // Frischer Start – noch keine Änderungen
     state.skin          = data.skin          || { components: {}, props: {}, face: {} };
     state.maxValues     = data.maxValues     || {};
     state.slotDefs      = data.slotDefs      || [];
@@ -619,6 +645,7 @@ function setSlider(id, value, toSlider, toLabel) {
 });
 
 function sendHeadBlend() {
+    markDirty();
     nuiCallback('setHeadBlend', state.faceData);
 }
 
@@ -643,6 +670,7 @@ function buildFaceFeatureSliders() {
             const v = parseInt(el.value) / 100;
             state.faceData.features[i] = v;
             document.getElementById(`ff-${i}-val`).textContent = v.toFixed(2);
+            markDirty();
             nuiCallback('setFaceFeature', { featureId: i, value: v });
         });
     });
@@ -679,6 +707,7 @@ function initOverlayValues(overlaysArray) {
 
 // Sendet ein Overlay an die Lua-Seite
 function sendOverlay(ovDef) {
+    markDirty();
     const v = state.overlayValues[ovDef.id] || { index: 0, opacity: 0, color1: 0, color2: 0 };
     const data = {
         overlayId: ovDef.id,
@@ -792,6 +821,7 @@ async function applyGender(model) {
     if (female) female.disabled = false;
 
     if (result && result.ok) {
+        markDirty();
         state.gender = model;
         buildGenderButtons();
         // Geschlechtsanzeige in Charakterinfo aktualisieren
@@ -816,11 +846,13 @@ async function applyGender(model) {
 function buildHairColorPalettes() {
     buildColorPalette('hair-colors-primary',   state.hairColor1, i => {
         state.hairColor1 = i;
+        markDirty();
         nuiCallback('setHairColor', { color1: state.hairColor1, color2: state.hairColor2 });
         refreshPaletteSelection('hair-colors-primary', i);
     });
     buildColorPalette('hair-colors-secondary', state.hairColor2, i => {
         state.hairColor2 = i;
+        markDirty();
         nuiCallback('setHairColor', { color1: state.hairColor1, color2: state.hairColor2 });
         refreshPaletteSelection('hair-colors-secondary', i);
     });
@@ -863,6 +895,7 @@ function buildEyeColorPalette() {
             el.querySelectorAll('.hair-color-chip').forEach((c, j) => {
                 c.classList.toggle('active', j === i);
             });
+            markDirty();
             nuiCallback('setEyeColor', { index: i });
         });
         el.appendChild(chip);

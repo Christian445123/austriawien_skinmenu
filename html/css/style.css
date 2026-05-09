@@ -385,3 +385,81 @@ html, body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+/* === Unsaved-Changes Modal === */
+.unsaved-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn .2s ease;
+}
+.unsaved-modal {
+    background: rgba(14,14,14,0.97);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(230,48,48,.15);
+    padding: 32px 36px;
+    max-width: 400px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    animation: modalIn .22s cubic-bezier(.16,1,.3,1);
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(.92) translateY(10px); }
+    to   { opacity: 1; transform: scale(1)  translateY(0); }
+}
+.unsaved-icon {
+    font-size: 36px;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(230,48,48,.6);
+    line-height: 1;
+}
+.unsaved-title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--text);
+    text-transform: uppercase;
+}
+.unsaved-msg {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+.unsaved-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+    width: 100%;
+    justify-content: center;
+}
+.btn-unsaved-stay {
+    background: rgba(255,255,255,.07) !important;
+    border-color: rgba(255,255,255,.15) !important;
+    color: var(--text) !important;
+    flex: 1;
+}
+.btn-unsaved-stay:hover {
+    background: rgba(255,255,255,.13) !important;
+    border-color: rgba(255,255,255,.3) !important;
+}
+.btn-unsaved-leave {
+    background: rgba(230,48,48,.18) !important;
+    border-color: var(--red) !important;
+    color: var(--red) !important;
+    flex: 1;
+}
+.btn-unsaved-leave:hover {
+    background: var(--red) !important;
+    color: #fff !important;
+    box-shadow: 0 0 16px rgba(230,48,48,.5) !important;
+}
