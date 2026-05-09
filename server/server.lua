@@ -98,13 +98,13 @@ Citizen.CreateThread(function()
     end
 
     -- ─── Lizenz prüfen ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    local licDone = false
+    local licDone   = false
+    local licenseMsg = 'Unbekannter Fehler'
     PerformHttpRequest(
         apiUrl .. '/api/check_license.php',
         function(statusCode, body, headers)
             licDone = true
             if statusCode == 0 or statusCode >= 500 then
-                -- Server nicht erreichbar: Offline-Toleranz (verhindert Ausfall bei kurzzeitigem Serverausfall)
                 print('^3[AWskin] Lizenzserver nicht erreichbar (HTTP ' .. tostring(statusCode) .. ') – Offline-Toleranz aktiv.^7')
                 licenseValid = true
                 return
@@ -114,7 +114,7 @@ Citizen.CreateThread(function()
                 local preview = body and body:sub(1, 300) or '(leer)'
                 print('^1[AWskin] Ungültige API-Antwort (HTTP ' .. tostring(statusCode) .. ')^7')
                 print('^1[AWskin] Body: ' .. preview .. '^7')
-                -- Ungültige Antwort = Lizenz nicht bestätigt → stoppen
+                licenseMsg   = 'Ungültige Antwort vom Lizenzserver (HTTP ' .. tostring(statusCode) .. ')'
                 licenseValid = false
                 return
             end
@@ -123,7 +123,7 @@ Citizen.CreateThread(function()
                 print('^2[AWskin] Lizenz gültig: ' .. tostring(resp.message or 'OK') .. '^7')
             else
                 licenseValid = false
-                print('^1[AWskin] Lizenz abgelehnt: ' .. tostring(resp.message or 'Unbekannter Fehler') .. '^7')
+                licenseMsg   = tostring(resp.message or 'Unbekannter Fehler')
             end
         end,
         'POST',
@@ -143,7 +143,7 @@ Citizen.CreateThread(function()
     end
 
     if not licenseValid then
-        stopResourceWithError('Lizenz abgelehnt für Key: ' .. tostring(licKey))
+        stopResourceWithError(licenseMsg)
         return
     end
 
