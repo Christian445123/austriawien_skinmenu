@@ -47,50 +47,107 @@ AddEventHandler('austriawien_skinmenu:debugLog', function(msg)
 end)
 
 -- ─── Lizenz-Prüfung beim Ressourcenstart ─────────────────────────────────────
-local VALID_LICENSE_KEY = 'AW-SKIN-2026-MIDCORE'
+-- ─── Lizenz-Prüfung über API ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 local licenseValid = false
 
-AddEventHandler('onResourceStart', function(resourceName)
-    if GetCurrentResourceName() ~= resourceName then return end
+local function getServerIp()
+    local ep = GetConvar('sv_endpoints', '')
+    return ep:match('(%d+%.%d+%.%d+%.%d+)') or '0.0.0.0'
+end
 
-    local key = Config.LicenseKey or ''
-    if key ~= VALID_LICENSE_KEY then
-        print('^1')
-        print('^1  ################################################################')
-        print('^1  ##                                                            ##')
-        print('^1  ##   !!!!!!!!!   A C H T U N G   !!!!!!!!!                   ##')
-        print('^1  ##                                                            ##')
-        print('^1  ##   DER LIZENZSCHLUESSEL STIMMT NICHT UEBEREIN!             ##')
-        print('^1  ##                                                            ##')
-        print('^1  ##   Eingetragen : "' .. tostring(key) .. '"')
-        print('^1  ##   Erwartet    : gültiger AW-SKIN Schluessel               ##')
-        print('^1  ##                                                            ##')
-        print('^1  ##   Trage den korrekten Schluessel in config.lua ein:       ##')
-        print('^1  ##     Config.LicenseKey = "DEIN-SCHLUESSEL"                 ##')
-        print('^1  ##                                                            ##')
-        print('^1  ##   Die Resource wird in 5 Sekunden gestoppt!               ##')
-        print('^1  ##                                                            ##')
-        print('^1  ################################################################')
-        print('^1')
-        licenseValid = false
-    else
-        licenseValid = true
-        print('^2[AWskin] Lizenz OK. Resource gestartet.^7')
-    end
-end)
+local function stopResourceWithError(reason)
+    print('^1')
+    print('^1  ################################################################')
+    print('^1  ##  LIZENZ-FEHLER: ' .. tostring(reason))
+    print('^1  ##  Die Resource wird gestoppt.')
+    print('^1  ################################################################^7')
+    Citizen.Wait(3000)
+    StopResource(GetCurrentResourceName())
+end
 
--- Wird auf Modul-Ebene gestartet – zuverlässiger als Thread in einem Event-Handler
 Citizen.CreateThread(function()
-    Citizen.Wait(500) -- warten bis onResourceStart ausgeführt wurde
-    if not licenseValid then
-        Citizen.Wait(5000)
-        print('^1  ################################################################')
-        print('^1  ##   STOPPE RESOURCE: ' .. GetCurrentResourceName())
-        print('^1  ################################################################')
-        print('^7')
-        StopResource(GetCurrentResourceName())
-        ExecuteCommand('stop ' .. GetCurrentResourceName())
+    Citizen.Wait(1000)  -- warten bis Config geladen ist
+
+    local apiUrl    = (ServerSecrets and ServerSecrets.LicenseApiUrl)        or ''
+    local apiSecret = (ServerSecrets and ServerSecrets.LicenseApiSecret)     or ''
+    local resName   = (ServerSecrets and ServerSecrets.LicenseResourceName)  or GetCurrentResourceName()
+    local licKey    = (ServerSecrets and ServerSecrets.LicenseKey)           or ''
+    local serverIp  = getServerIp()
+
+    -- Kein Lizenzserver konfiguriert – überspringen
+    if apiUrl == '' or apiUrl:find('DEINE%-DOMAIN') then
+        print('^3[AWskin] Kein Lizenzserver konfiguriert – überspringe API-Prüfung.^7')
+        licenseValid = true
+        return
     end
+
+    -- ─── Lizenz prüfen ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    local licDone = false
+    PerformHttpRequest(
+        apiUrl .. '/api/check_license.php',
+        function(statusCode, body, headers)
+            licDone = true
+            if statusCode == 0 or statusCode >= 500 then
+                -- Server nicht erreichbar: Offline-Toleranz (verhindert Ausfall bei kurzzeitigem Serverausfall)
+                print('^3[AWskin] Lizenzserver nicht erreichbar (HTTP ' .. tostring(statusCode) .. ') – Offline-Toleranz aktiv.^7')
+                licenseValid = true
+                return
+            end
+            local resp = body and json.decode(body)
+            if not resp then
+                print('^3[AWskin] Ungültige API-Antwort beim Lizenzcheck.^7')
+                licenseValid = true
+                return
+            end
+            if resp.valid == true then
+                licenseValid = true
+                print('^2[AWskin] Lizenz gültig: ' .. tostring(resp.message or 'OK') .. '^7')
+            else
+                licenseValid = false
+                print('^1[AWskin] Lizenz abgelehnt: ' .. tostring(resp.message or 'Unbekannter Fehler') .. '^7')
+            end
+        end,
+        'POST',
+        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName,
+        { ['Content-Type'] = 'application/x-www-form-urlencoded', ['X-Api-Secret'] = apiSecret }
+    )
+
+    -- Auf Antwort warten (max. 10 Sekunden)
+    local waited = 0
+    while not licDone and waited < 10000 do
+        Citizen.Wait(250)
+        waited = waited + 250
+    end
+    if not licDone then
+        print('^3[AWskin] Lizenzserver Timeout – Offline-Toleranz aktiv.^7')
+        licenseValid = true
+    end
+
+    if not licenseValid then
+        stopResourceWithError('Lizenz abgelehnt für Key: ' .. tostring(licKey))
+        return
+    end
+
+    -- ─── Version prüfen (nur Info, kein Stop) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    PerformHttpRequest(
+        apiUrl .. '/api/check_version.php?' ..
+            'resource_name=' .. resName .. '&current_version=' .. RESOURCE_VERSION,
+        function(statusCode, body, headers)
+            if statusCode ~= 200 or not body then return end
+            local resp = json.decode(body)
+            if not resp or resp.up_to_date then return end
+            print('^3')
+            print('^3  ┌─────────────────────────────────────────────────────────────────────────────────────')
+            print('^3  │  UPDATE VERFÜGBAR: v' .. tostring(resp.latest_version or '?') .. ' (Aktuell: v' .. RESOURCE_VERSION .. ')')
+            if resp.changelog and resp.changelog ~= '' then
+                print('^3  │  ' .. tostring(resp.changelog))
+            end
+            print('^3  └─────────────────────────────────────────────────────────────────────────────────────^7')
+        end,
+        'GET',
+        '',
+        { ['X-Api-Secret'] = apiSecret }
+    )
 end)
 
 -- ─── Skin-Cache (In-Memory) ─────────────────────────────────────────────────

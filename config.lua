@@ -1,4 +1,4 @@
-Config = {}
+﻿Config = {}
 
 -- ─── Debug ────────────────────────────────────────────────────────────────────
 -- true  → alle Logs in die F8-Konsole (Client) und Server-Konsole schreiben
@@ -36,7 +36,3 @@ Config.AllowedModels = {
     'mp_m_freemode_01',
     'mp_f_freemode_01'
 }
-
--- ─── Lizenz ──────────────────────────────────────────────────────────────────
--- Lizenzschlüssel – wird beim Ressourcenstart geprüft.
-Config.LicenseKey = 'AW-SKIN-2026-MIDCORE' -- Lizenzschlüssel hier eintragen
