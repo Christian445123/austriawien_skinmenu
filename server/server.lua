@@ -102,7 +102,10 @@ Citizen.CreateThread(function()
             end
             local resp = body and json.decode(body)
             if not resp then
-                print('^3[AWskin] Ungültige API-Antwort beim Lizenzcheck.^7')
+                -- Body im Log ausgeben damit man sieht was die API zurückgibt
+                local preview = body and body:sub(1, 300) or '(leer)'
+                print('^1[AWskin] Ungültige API-Antwort (HTTP ' .. tostring(statusCode) .. ')^7')
+                print('^1[AWskin] Body: ' .. preview .. '^7')
                 licenseValid = true
                 return
             end
@@ -115,8 +118,8 @@ Citizen.CreateThread(function()
             end
         end,
         'POST',
-        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName,
-        { ['Content-Type'] = 'application/x-www-form-urlencoded', ['X-Api-Secret'] = apiSecret }
+        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName .. '&api_secret=' .. apiSecret,
+        { ['Content-Type'] = 'application/x-www-form-urlencoded' }
     )
 
     -- Auf Antwort warten (max. 10 Sekunden)
@@ -138,7 +141,7 @@ Citizen.CreateThread(function()
     -- ─── Version prüfen (nur Info, kein Stop) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     PerformHttpRequest(
         apiUrl .. '/api/check_version.php?' ..
-            'resource_name=' .. resName .. '&current_version=' .. RESOURCE_VERSION,
+            'resource_name=' .. resName .. '&current_version=' .. RESOURCE_VERSION .. '&api_secret=' .. apiSecret,
         function(statusCode, body, headers)
             if statusCode ~= 200 or not body then return end
             local resp = json.decode(body)
@@ -153,7 +156,7 @@ Citizen.CreateThread(function()
         end,
         'GET',
         '',
-        { ['X-Api-Secret'] = apiSecret }
+        {}
     )
 end)
 

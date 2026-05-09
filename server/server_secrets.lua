@@ -8,7 +8,7 @@
 ServerSecrets = ServerSecrets or {}
 
 -- Lizenzschlüssel (vom Lizenzserver erhalten)
-ServerSecrets.LicenseKey         = '078E263B-5D266D41-B8EC057B-96EDB3575' -- Lizenzschlüssel hier eintragen
+ServerSecrets.LicenseKey         = '1E0970D0-A7DB0A45-2B536747-CC928B9A' -- Lizenzschlüssel hier eintragen
 
 -- URL des CG Lizenzservers (kein trailing slash)
 ServerSecrets.LicenseApiUrl       = 'https://development.gamingcommunity.at'
