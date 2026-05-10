@@ -9,10 +9,11 @@ local savedSkin   = {}
 local currentSkin = {}
 
 -- ─── Debug-Helper ────────────────────────────────────────────────────────────
--- Debug-Ausgaben in der Serverkonsole (Live Console)
+-- Debug-Ausgaben in der F8-Konsole (lokal) UND in der Serverkonsole.
 local function dbg(msg, ...)
     if Config.Debug then
         local formatted = ('^3[AWskin CLIENT]^7 ' .. tostring(msg)):format(...)
+        print(formatted)  -- F8-Konsole (lokal sichtbar)
         TriggerServerEvent('austriawien_skinmenu:debugLog', formatted)
     end
 end
@@ -175,6 +176,7 @@ local function readCurrentSkin()
     if lastAppliedSkin and lastAppliedSkin.face then
         skin.face = lastAppliedSkin.face
     else
+        dbg('readCurrentSkin: WARNUNG – kein Face-Cache (lastAppliedSkin=nil), Standardwerte werden verwendet!')
         skin.face = {
             hairColor1   = GetPedHairColor(ped),
             hairColor2   = GetPedHairHighlightColor(ped),
@@ -247,17 +249,25 @@ local function applyAppearanceToPed(ped, skin)
 
     if skin.face then
         local f = skin.face
-        -- HeadBlend ZUERST setzen, danach FinalizePedBlend aufrufen –
-        -- das ist Voraussetzung damit SetPedHairColor und SetPedEyeColor
-        -- korrekt wirken (insbesondere auf Preview-Peds im Multichar).
+        -- HeadBlend ZUERST setzen.
         SetPedHeadBlendData(ped,
             f.shapeFirst  or 0, f.shapeSecond or 0, 0,
             f.skinFirst   or 0, f.skinSecond  or 0, 0,
             f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
         )
-        FinalizePedBlend(ped)
+        -- Haarfarbe sofort setzen …
         SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
         SetPedEyeColor(ped, f.eyeColor or 0)
+        -- … und nochmals nach einem Frame, da SetPedHeadBlendData nicht synchron ist
+        -- und der erste Aufruf manchmal nicht greift.
+        local _ped2, _h1, _h2, _eye = ped, f.hairColor1 or 0, f.hairColor2 or 0, f.eyeColor or 0
+        CreateThread(function()
+            Wait(0)
+            if DoesEntityExist(_ped2) then
+                SetPedHairColor(_ped2, _h1, _h2)
+                SetPedEyeColor(_ped2, _eye)
+            end
+        end)
         if f.features then
             for i, val in ipairs(f.features) do
                 SetPedFaceFeature(ped, i - 1, val)
@@ -407,18 +417,30 @@ local function openSkinMenu()
     currentSkin  = readCurrentSkin()
     isMenuOpen   = true
 
-    -- HeadBlend initialisieren – nötig damit SetPedEyeColor sofort wirkt
-    local f = currentSkin.face or {}
-    SetPedHeadBlendData(ped,
-        f.shapeFirst  or 0, f.shapeSecond or 0, 0,
-        f.skinFirst   or 0, f.skinSecond  or 0, 0,
-        f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
-    )
+    -- HeadBlend nur neu setzen wenn Cache vorhanden – verhindert visuellen Reset
+    -- des Gesichts wenn lastAppliedSkin nil ist (z.B. Skin durch andere Ressource gesetzt).
+    -- WICHTIG: Ohne diese Prüfung würden alle face-Werte auf 0 gesetzt → falsches Gesicht!
+    if lastAppliedSkin and lastAppliedSkin.face then
+        local f = lastAppliedSkin.face
+        SetPedHeadBlendData(ped,
+            f.shapeFirst  or 0, f.shapeSecond or 0, 0,
+            f.skinFirst   or 0, f.skinSecond  or 0, 0,
+            f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
+        )
+        dbg('openSkinMenu: HeadBlend aus Cache initialisiert (shapeFirst=%d skinFirst=%d shapeMix=%.2f)',
+            f.shapeFirst or 0, f.skinFirst or 0, f.shapeMix or 0.5)
+    else
+        dbg('openSkinMenu: WARNUNG – kein lastAppliedSkin-Cache, HeadBlend NICHT neu gesetzt (Gesicht bleibt wie es ist)')
+    end
 
     if Config.FreezeOnOpen then
         FreezeEntityPosition(ped, true)
         dbg('Ped eingefroren')
     end
+    -- Charakter still stehen lassen: alle laufenden Tasks sofort abbrechen
+    -- und danach TaskStandStill setzen, damit GTA V keine Idle-Animationen startet.
+    ClearPedTasksImmediately(ped)
+    TaskStandStill(ped, -1)
     DisplayHud(false)
     DisplayRadar(false)
     createCamera()
@@ -470,7 +492,7 @@ local function closeSkinMenu(restore)
     dbg('Menü schließen | restore=%s', tostring(restore))
 
     if restore then
-        dbg('Originalsk in wird wiederhergestellt')
+        dbg('Originalskin wird wiederhergestellt')
         applySkin(savedSkin)
     end
 
@@ -647,6 +669,37 @@ RegisterNUICallback('setGender', function(data, cb)
     -- Standardkomponenten für das neue Modell setzen (sonst erscheint der Ped nackt/kaputt)
     SetPedDefaultComponentVariation(ped)
 
+    -- Gesichtsmerkmale und Overlays auf neuem Modell wiederherstellen
+    if lastAppliedSkin and lastAppliedSkin.face then
+        local f = lastAppliedSkin.face
+        SetPedHeadBlendData(ped,
+            f.shapeFirst  or 0, f.shapeSecond or 0, 0,
+            f.skinFirst   or 0, f.skinSecond  or 0, 0,
+            f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
+        )
+        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+        SetPedEyeColor(ped, f.eyeColor or 0)
+        if f.features then
+            for i, val in ipairs(f.features) do
+                SetPedFaceFeature(ped, i - 1, val)
+            end
+        end
+        if f.overlays then
+            for _, ov in ipairs(f.overlays) do
+                SetPedHeadOverlay(ped, ov.id, ov.index, ov.opacity)
+                if ov.colorType and ov.colorType > 0 then
+                    SetPedHeadOverlayColor(ped, ov.id, ov.colorType, ov.color1 or 0, ov.color2 or 0)
+                end
+            end
+        end
+        if f.eyebrowColor then
+            SetPedHeadOverlayColor(ped, 2, 1, f.eyebrowColor, 0)
+        end
+        dbg('setGender: Gesicht auf neuem Modell (%s) wiederhergestellt', model)
+    else
+        dbg('setGender: kein Face-Cache – Gesicht bleibt Standard des neuen Modells')
+    end
+
     if Config.FreezeOnOpen and isMenuOpen then
         FreezeEntityPosition(ped, true)
     end
@@ -686,6 +739,25 @@ end)
 -- Speichern
 RegisterNUICallback('save', function(data, cb)
     dbg('NUI save – sende Skin an Server')
+    -- Cache sofort mit dem gespeicherten Skin aktualisieren.
+    -- Ohne dieses Update hätte das nächste Menüöffnen noch die alten
+    -- Haarfarben / Face-Daten im Cache (lastAppliedSkin), da closeSkinMenu(false)
+    -- applySkin() NICHT aufruft.
+    if data.skin then
+        local skinToCache = data.skin
+        if isEsxFlatFormat(skinToCache) then
+            skinToCache = esxSkinToAW(skinToCache)
+        end
+        if skinToCache then
+            lastAppliedSkin = skinToCache
+            lastSkin        = skinToCache
+            dbg('save: Cache aktualisiert | hairColor1=%d hairColor2=%d eyeColor=%d',
+                skinToCache.face and skinToCache.face.hairColor1 or -1,
+                skinToCache.face and skinToCache.face.hairColor2 or -1,
+                skinToCache.face and skinToCache.face.eyeColor   or -1
+            )
+        end
+    end
     -- Skin für eigenen Charakter speichern
     TriggerServerEvent('austriawien_skinmenu:saveSkin', data.skin, nil)
     closeSkinMenu(false)
@@ -811,12 +883,23 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     if skin then
         -- Format-Konvertierung: ESX/Skinchanger Flat-Format → AWskin
         -- (esxSkinToAW ist eine No-Op wenn bereits AWskin-Format)
+        dbg('applySkin Event: Format=%s | Modell=%s | Face=%s | Komponenten=%s',
+            isEsxFlatFormat(skin) and 'ESX-Flat' or 'AWskin',
+            tostring(skin.model or skin.sex),
+            skin.face and 'ja' or 'nein',
+            skin.components and 'ja' or 'nein'
+        )
         skin = esxSkinToAW(skin)
         lastSkin         = skin
         lastAppliedSkin  = skin
+        dbg('applySkin Event: Skin gecacht | Modell=%s | shapeFirst=%d skinFirst=%d',
+            tostring(skin.model),
+            skin.face and skin.face.shapeFirst or -1,
+            skin.face and skin.face.skinFirst  or -1
+        )
         applySkin(skin)
     else
-        dbg('FEHLER: json.decode fehlgeschlagen')
+        dbg('FEHLER: json.decode fehlgeschlagen | JSON-Anfang: %s', tostring(skinJson and skinJson:sub(1, 80) or 'nil'))
     end
 end)
 
@@ -830,6 +913,22 @@ end)
 AddEventHandler('esx:playerLoaded', function()
     dbg('esx:playerLoaded → reset')
     skinLoaded = false
+end)
+
+-- ─── Periodischer Autosave (alle 2-5 Minuten) ────────────────────────────────
+-- Speichert den aktuellen Skin regelmäßig damit Änderungen (z.B. nach dem
+-- Kleidungskauf) nicht verloren gehen, selbst wenn der Spieler crasht.
+CreateThread(function()
+    while true do
+        -- Zufälliges Intervall zwischen 120 und 300 Sekunden (2-5 Minuten)
+        local interval = math.random(120, 300) * 1000
+        Wait(interval)
+        -- Nur wenn ESX geladen, kein Menü offen und ein Skin im Cache ist
+        if ESX and not isMenuOpen and lastAppliedSkin and lastAppliedSkin.model then
+            dbg('Periodischer Autosave (Intervall: %d Sek.)', interval / 1000)
+            TriggerServerEvent('austriawien_skinmenu:autoSave', lastAppliedSkin)
+        end
+    end
 end)
 
 -- ─── Autosave bei Logout / Ressource-Stop ─────────────────────────────────────────
