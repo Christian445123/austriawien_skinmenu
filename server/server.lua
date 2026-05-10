@@ -88,7 +88,15 @@ Citizen.CreateThread(function()
     local apiSecret = ServerSecrets.LicenseApiSecret    or ''
     local resName   = ServerSecrets.LicenseResourceName or GetCurrentResourceName()
     local licKey    = ServerSecrets.LicenseKey          or ''
-    local serverIp  = getServerIp()
+    -- ServerIp: String oder Tabelle mit mehreren IPs möglich
+    local serverIp
+    if type(ServerSecrets.ServerIp) == 'table' then
+        serverIp = table.concat(ServerSecrets.ServerIp, ',')
+    elseif type(ServerSecrets.ServerIp) == 'string' and ServerSecrets.ServerIp ~= '' then
+        serverIp = ServerSecrets.ServerIp
+    else
+        serverIp = getServerIp()
+    end
 
     -- Kein Lizenzserver konfiguriert – überspringen
     if apiUrl == '' then
@@ -122,12 +130,12 @@ Citizen.CreateThread(function()
                 licenseValid = true
                 print('^2[AWskin] Lizenz gültig: ' .. tostring(resp.message or 'OK') .. '^7')
             else
-                licenseValid = false
+     w           licenseValid = false
                 licenseMsg   = tostring(resp.message or 'Unbekannter Fehler')
             end
         end,
         'POST',
-        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName .. '&version=' .. RESOURCE_VERSION .. '&api_secret=' .. apiSecret,
+        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName .. '&resource_version=' .. RESOURCE_VERSION .. '&api_secret=' .. apiSecret,
         { ['Content-Type'] = 'application/x-www-form-urlencoded' }
     )
 
