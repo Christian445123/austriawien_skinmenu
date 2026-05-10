@@ -499,7 +499,11 @@ local function closeSkinMenu(restore)
     SetNuiFocus(false, false)
     DisplayHud(true)
     DisplayRadar(true)
-    FreezeEntityPosition(PlayerPedId(), false)
+    local _closePed = PlayerPedId()
+    FreezeEntityPosition(_closePed, false)
+    -- TaskStandStill(-1) aufheben, das beim Öffnen gesetzt wurde.
+    -- Ohne diesen Aufruf bleibt der Spieler dauerhaft eingefroren.
+    ClearPedTasksImmediately(_closePed)
     destroyCamera()
     dbg('Menü geschlossen')
 end
@@ -816,15 +820,20 @@ local lastSkin   = nil  -- Cache für esx_skin:getLastSkin Kompatibilität
 
 -- ── Spieler-Login: Skin laden ─────────────────────────────────────────────
 -- esx_identity / zr-identity triggern nach der Anmeldung 'esx_skin:playerRegistered'.
--- Wir laden hier unseren Skin aus der DB.
+-- WICHTIG: kein skinLoaded-Guard hier – dieser Event wird auch von Aduty-Ressourcen
+-- beim Verlassen des Diensts gefeuert, damit der Originalcharakter wiederhergestellt wird.
 AddEventHandler('esx_skin:playerRegistered', function()
     dbg('esx_skin:playerRegistered empfangen')
     CreateThread(function()
         while ESX == nil or not ESX.PlayerLoaded do Wait(100) end
-        if not skinLoaded then
-            skinLoaded = true
-            TriggerServerEvent('austriawien_skinmenu:loadSkin')
+        skinLoaded = true
+        -- Gecachten Skin sofort anwenden (verhindert kurzes Anzeigen des Falsch-Modells)
+        if lastAppliedSkin and lastAppliedSkin.model then
+            dbg('esx_skin:playerRegistered – wende Cache-Skin sofort an: %s', lastAppliedSkin.model)
+            applySkin(lastAppliedSkin)
         end
+        -- Skin aus DB laden (bestätigt den aktuellen Stand)
+        TriggerServerEvent('austriawien_skinmenu:loadSkin')
     end)
 end)
 
@@ -903,10 +912,19 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     end
 end)
 
--- ── esx:onPlayerSpawn: Skin immer aus Cache/DB laden um korrekte Kleidung zu garantieren
+-- ── esx:onPlayerSpawn: Skin wiederherstellen (auch nach Aduty) ──────────────
 AddEventHandler('esx:onPlayerSpawn', function()
-    dbg('esx:onPlayerSpawn | skinLoaded=%s', tostring(skinLoaded))
+    dbg('esx:onPlayerSpawn | skinLoaded=%s | cache=%s', tostring(skinLoaded), tostring(lastAppliedSkin ~= nil))
     skinLoaded = true
+    -- Gecachten Skin SOFORT anwenden (verhindert dass Spieler kurzzeitig als
+    -- falsches Modell / weiblicher Standard-Ped erscheint, z.B. nach Aduty).
+    if lastAppliedSkin and lastAppliedSkin.model then
+        dbg('esx:onPlayerSpawn – wende Cache-Skin sofort an: %s', lastAppliedSkin.model)
+        CreateThread(function()
+            applySkin(lastAppliedSkin)
+        end)
+    end
+    -- Zusätzlich vom Server laden um sicherzustellen dass der gespeicherte Stand stimmt.
     TriggerServerEvent('austriawien_skinmenu:loadSkin')
 end)
 
@@ -1084,8 +1102,17 @@ AddEventHandler('skinchanger:loadSkin', function(skin, pedOrCb, cbOrNil)
             Wait(0)
             applyAppearanceToPed(targetPed, awSkin)
         else
-            -- Spieler-Ped: normaler Skin-Apply inkl. Modellwechsel
-            dbg('skinchanger:loadSkin → Spieler-Ped')
+            -- Spieler-Ped: Gesicht IMMER aus dem Cache übernehmen.
+            -- Kleidungsläden dürfen nur Komponenten/Props ändern, nicht das Gesicht.
+            -- Ohne diese Sicherung würde das Flat-Format mit Default-Gesichtswerten
+            -- den echten Charakter überschreiben (Haarfarbe, Overlays, HeadBlend, etc.).
+            if lastAppliedSkin and lastAppliedSkin.face then
+                awSkin.face  = lastAppliedSkin.face
+                awSkin.model = awSkin.model or lastAppliedSkin.model
+                dbg('skinchanger:loadSkin → Spieler-Ped | Gesicht aus Cache geschützt | Modell=%s', tostring(awSkin.model))
+            else
+                dbg('skinchanger:loadSkin → Spieler-Ped | kein Face-Cache, wende Skin vollständig an')
+            end
             applySkin(awSkin)
         end
         if type(cb) == 'function' then cb() end

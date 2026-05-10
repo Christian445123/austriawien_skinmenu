@@ -4,55 +4,110 @@
 
 'use strict';
 
-// ─── GTA V Haarfarben-Palette (64 Farben) ────────────────────────────────────
+// ─── GTA V Haarfarben-Palette (64 Farben, Index 0-63) ────────────────────────
+// Exakte Hex-Werte aus dem offiziellen GTA V / RAGE-MP Wiki.
+// Jeder Index entspricht 1:1 dem Parameter von SetPedHairColor / SetPedHairTint.
 const HAIR_COLORS = [
-    '#1a1a1a','#2c2c2c','#3d2b1f','#5c3d2e','#7a5c40','#a07040',
-    '#c8a060','#e8c88a','#f0e0b0','#f8f0d0','#d4a030','#c89020',
-    '#b07020','#885010','#603010','#401808','#800000','#a01010',
-    '#c02020','#e04040','#ff6060','#ff8080','#ffb0b0','#ffe0e0',
-    '#800080','#a020a0','#c040c0','#e060e0','#ff80ff','#ffb0ff',
-    '#000080','#002080','#004080','#0060a0','#0080c0','#00a0e0',
-    '#00c0ff','#60d0ff','#b0e8ff','#e0f4ff','#008000','#009020',
-    '#00a840','#40c060','#80d880','#b0ecb0','#e8f8e8','#ffffff',
-    '#f0f0f0','#d0d0d0','#a8a8a8','#808080','#585858','#383838',
-    '#282828','#181818','#101010','#080808','#c0a880','#a08060',
-    '#806040','#604020','#402010','#200c04'
+    '#1c1f21', // 0  Sehr dunkel fast Schwarz
+    '#272a2c', // 1  Dunkel Schwarz-Braun
+    '#312e2c', // 2  Dunkles Dunkelbraun
+    '#35261c', // 3  Dunkelbraun
+    '#4b321f', // 4  Braun
+    '#5c3b24', // 5  Mittelbraun
+    '#6d4c35', // 6  Warmes Mittelbraun
+    '#6b503b', // 7  Hellbraun-Braun
+    '#765c45', // 8  Helleres Braun
+    '#7f684e', // 9  Sandiges Braun
+    '#99815d', // 10 Helles Braun
+    '#a79369', // 11 Blondes Braun
+    '#af9c70', // 12 Dunkelblond
+    '#bba063', // 13 Dunkelblond warm
+    '#d6b97b', // 14 Mittelblond
+    '#dac38e', // 15 Hellblond
+    '#9f7f59', // 16 Kupferbraun
+    '#845039', // 17 Rotbraun
+    '#682b1f', // 18 Dunkelrot-Braun
+    '#61120c', // 19 Dunkelrot
+    '#640f0a', // 20 Tief-Rot-Dunkel
+    '#7c140f', // 21 Tiefrot
+    '#a02e19', // 22 Rot
+    '#b64b28', // 23 Helles Rot-Orange
+    '#a2502f', // 24 Orange-Rot
+    '#aa4e2b', // 25 Dunkel-Orange
+    '#626262', // 26 Dunkelgrau
+    '#808080', // 27 Grau
+    '#aaaaaa', // 28 Hellgrau
+    '#c5c5c5', // 29 Sehr hellgrau
+    '#463955', // 30 Dunkel-Lila
+    '#5a3f6b', // 31 Lila
+    '#763c76', // 32 Helles Lila
+    '#ed74e3', // 33 Pink-Lila
+    '#eb4b93', // 34 Pink
+    '#f299bc', // 35 Hellpink
+    '#04959e', // 36 Türkis
+    '#025f86', // 37 Dunkelblau
+    '#023974', // 38 Tief-Dunkelblau
+    '#3fa16a', // 39 Grün
+    '#217c61', // 40 Dunkelgrün
+    '#185c55', // 41 Dunkel Türkis-Grün
+    '#b6c034', // 42 Gelbgrün
+    '#70a90b', // 43 Olivgrün
+    '#439d13', // 44 Hellgrün
+    '#dcb857', // 45 Helles Gold
+    '#e5b103', // 46 Gold
+    '#e69102', // 47 Dunkelgold / Orange-Gold
+    '#f28831', // 48 Orange
+    '#fb8057', // 49 Helles Orange
+    '#e28b58', // 50 Sandorange
+    '#d1593c', // 51 Orange-Rot
+    '#ce3120', // 52 Kräftiges Rot
+    '#ad0903', // 53 Dunkelrot
+    '#880302', // 54 Sehr dunkelrot
+    '#1f1814', // 55 Sehr dunkel (fast Schwarz, warm)
+    '#291f19', // 56 Dunkelbraun-Schwarz
+    '#2e221b', // 57 Dunkelbraun 2
+    '#37291e', // 58 Dunkelbraun 3
+    '#2e2218', // 59 Dunkelbraun 4
+    '#231b15', // 60 Dunkelbraun 5
+    '#020202', // 61 Tiefschwarz
+    '#706c66', // 62 Grau-Braun
+    '#9d7a50', // 63 Mittleres Braun-Blond
 ];
 
-// ─── GTA V Augenfarben-Palette (31 Farben, Index 0-30) ──────────────────────
-// Hex-Werte entsprechen den tatsächlichen GTA V Augenfarben möglichst genau
+// ─── GTA V Irisfarben-Palette (30 Farben, Index 0-29) ───────────────────────
+// Quelle: FiveM Native-Dokumentation _SET_PED_EYE_COLOR.
+// Indices 0-13: natürliche Farben. Indices 14-29: Spezial/Exotic-Muster.
 const EYE_COLORS = [
-    '#3d1a00', // 0  – Dunkelbraun
-    '#2e7d32', // 1  – Smaragdgrün
-    '#1b4d1b', // 2  – Dunkelgrün
-    '#7dce7d', // 3  – Hellgrün / Leuchtgrün
-    '#1a3a8c', // 4  – Dunkelblau
-    '#6ab0d4', // 5  – Hellblau
-    '#009688', // 6  – Blaugrün / Türkis
-    '#7b4020', // 7  – Mittelbraun
-    '#2a0e00', // 8  – Sehr dunkelbraun
-    '#c8960a', // 9  – Gold / Gelb
-    '#9b7614', // 10 – Dunkles Gold
-    '#c8a46a', // 11 – Hellbraun / Haselnuss
-    '#707070', // 12 – Grau
-    '#3a3a3a', // 13 – Dunkelgrau
-    '#b8b8b8', // 14 – Hellgrau
-    '#f4a7b9', // 15 – Hellrosa
-    '#c0000a', // 16 – Rot
-    '#d4a017', // 17 – Dunkelgelb / Goldgelb
-    '#6a0dad', // 18 – Lila
-    '#9370db', // 19 – Mittellila
-    '#90c8e8', // 20 – Zartes Blau
-    '#00bcd4', // 21 – Cyan
-    '#e67e00', // 22 – Orange
-    '#1e7a1e', // 23 – Waldgrün
-    '#e05a00', // 24 – Dunkelorange
-    '#8b2500', // 25 – Dunkelrot
-    '#150600', // 26 – Fast Schwarz (Schwarz-Braun)
-    '#f0f0f0', // 27 – Weiß
-    '#a8c8e8', // 28 – Lavendel-Blau
-    '#a8f0a8', // 29 – Mintgrün
-    '#d0a8f0'  // 30 – Lavendel
+    '#0d0d0d', // 0  Schwarz
+    '#a8d8c5', // 1  Sehr helles Blau-Grün
+    '#1e3a6e', // 2  Dunkelblau
+    '#6b3a20', // 3  Braun
+    '#3d1a00', // 4  Dunkelbraun
+    '#a07040', // 5  Hellbraun
+    '#2060b0', // 6  Blau
+    '#5aabe0', // 7  Hellblau
+    '#f0a0b8', // 8  Pink
+    '#c8b400', // 9  Gelb
+    '#7020b0', // 10 Lila
+    '#141414', // 11 Schwarz (Variante)
+    '#1a4d20', // 12 Dunkelgrün
+    '#c8a060', // 13 Hellbraun (sandig)
+    '#a09810', // 14 Gelb-Schwarz Muster
+    '#c8c8c8', // 15 Helles Spiralmuster
+    '#c00020', // 16 Leuchtendes Rot
+    '#783090', // 17 Halb Blau / Halb Rot
+    '#486090', // 18 Halb Schwarz / Halb Hellblau
+    '#d0b0b0', // 19 Weiß / Rotes Muster
+    '#3a8040', // 20 Grüne Schlange
+    '#b03030', // 21 Rote Schlange
+    '#203870', // 22 Dunkelblaue Schlange
+    '#a08200', // 23 Dunkles Gelb
+    '#e8d400', // 24 Leuchtendes Gelb
+    '#050505', // 25 Alles Schwarz
+    '#a01010', // 26 Rote kleine Pupille
+    '#1e2e60', // 27 Teufel Blau-Schwarz
+    '#f0f0f0', // 28 Weiße kleine Pupille
+    '#d0e0f0', // 29 Milchig / Glasig
 ];
 
 // ─── Gesichtszug-Namen ────────────────────────────────────────────────────────
