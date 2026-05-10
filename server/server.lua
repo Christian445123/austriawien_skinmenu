@@ -130,7 +130,7 @@ Citizen.CreateThread(function()
                 licenseValid = true
                 print('^2[AWskin] Lizenz gültig: ' .. tostring(resp.message or 'OK') .. '^7')
             else
-     w           licenseValid = false
+                licenseValid = false
                 licenseMsg   = tostring(resp.message or 'Unbekannter Fehler')
             end
         end,

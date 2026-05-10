@@ -215,6 +215,12 @@ end
 -- ─── Appearance auf beliebigen Ped anwenden (kein Modellwechsel) ─────────────
 -- Wird intern von applySkin UND von Multicharakter-Previews genutzt.
 local function applyAppearanceToPed(ped, skin)
+    -- Flat-Format (esx_skin/skinchanger) automatisch konvertieren
+    if isEsxFlatFormat(skin) then
+        skin = esxSkinToAW(skin)
+        if not skin then return end
+    end
+
     if skin.components then
         for id, data in pairs(skin.components) do
             local slot = SLOT_MAP[id]
@@ -241,13 +247,17 @@ local function applyAppearanceToPed(ped, skin)
 
     if skin.face then
         local f = skin.face
-        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
-        SetPedEyeColor(ped, f.eyeColor or 0)
+        -- HeadBlend ZUERST setzen, danach FinalizePedBlend aufrufen –
+        -- das ist Voraussetzung damit SetPedHairColor und SetPedEyeColor
+        -- korrekt wirken (insbesondere auf Preview-Peds im Multichar).
         SetPedHeadBlendData(ped,
             f.shapeFirst  or 0, f.shapeSecond or 0, 0,
             f.skinFirst   or 0, f.skinSecond  or 0, 0,
             f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
         )
+        FinalizePedBlend(ped)
+        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+        SetPedEyeColor(ped, f.eyeColor or 0)
         if f.features then
             for i, val in ipairs(f.features) do
                 SetPedFaceFeature(ped, i - 1, val)
@@ -851,14 +861,18 @@ end)
 
 -- ─── Multicharakter-Kompatibilität ───────────────────────────────────────────
 -- Export: Kleidung/Gesicht auf einen beliebigen Preview-Ped anwenden.
+-- Unterstützt AWskin-Format UND ESX/Skinchanger Flat-Format.
 -- Aufruf aus dem Multichar-Script:
 --   exports['austriawien_skinmenu']:applyPedSkin(ped, skinDataTableOrJson)
 exports('applyPedSkin', function(ped, skinData)
     if type(skinData) == 'string' then
         skinData = json.decode(skinData)
     end
-    if not skinData then return end
+    if type(skinData) ~= 'table' then return end
     if not DoesEntityExist(ped) then return end
+    -- ESX/Skinchanger Flat-Format → AWskin konvertieren falls nötig
+    skinData = esxSkinToAW(skinData)
+    if not skinData then return end
     CreateThread(function()
         -- Falls das Ped-Modell noch nicht geladen ist, kurz warten
         if skinData.model then
@@ -871,7 +885,48 @@ exports('applyPedSkin', function(ped, skinData)
                 end
             end
         end
+        -- Standardkomponenten zurücksetzen (sauberer Ausgangszustand)
+        SetPedDefaultComponentVariation(ped)
+        Wait(0)
         applyAppearanceToPed(ped, skinData)
+    end)
+end)
+
+-- skinchanger-kompatibler Export: loadSkin(skin, ped, cb)
+-- Ermöglicht es Multichar-Scripts die auf exports['skinchanger']:loadSkin
+-- konfiguriert sind, stattdessen unseren Resource-Namen zu nutzen.
+exports('loadSkin', function(skin, ped, cb)
+    if type(skin) == 'string' then
+        skin = json.decode(skin)
+    end
+    if type(skin) ~= 'table' then
+        if type(cb) == 'function' then cb() end
+        return
+    end
+    local awSkin = esxSkinToAW(skin)
+    if not awSkin then
+        if type(cb) == 'function' then cb() end
+        return
+    end
+    CreateThread(function()
+        local isPed = type(ped) == 'number' and ped > 0 and DoesEntityExist(ped)
+        if isPed then
+            -- Preview-Ped in der Charakterauswahl
+            if awSkin.model then
+                local h = GetHashKey(awSkin.model)
+                if GetEntityModel(ped) ~= h then
+                    RequestModel(h)
+                    local t = 0
+                    while not HasModelLoaded(h) and t < 20 do Wait(100); t = t + 1 end
+                end
+            end
+            SetPedDefaultComponentVariation(ped)
+            Wait(0)
+            applyAppearanceToPed(ped, awSkin)
+        else
+            applySkin(awSkin)
+        end
+        if type(cb) == 'function' then cb() end
     end)
 end)
 
@@ -890,25 +945,50 @@ AddEventHandler('austriawien_skinmenu:applyExternalPedSkin', function(skinData, 
 end)
 
 -- ─── skinchanger:loadSkin abfangen ───────────────────────────────────────────
--- zr-multicharacter (ESX) ruft skinchanger:loadSkin mit dem Skin aus users.skin auf.
--- Wir konvertieren beide Formate (Flat + AWskin) und wenden den Skin an.
-AddEventHandler('skinchanger:loadSkin', function(skin, cb)
+-- zr-multicharacter (ESX) ruft skinchanger:loadSkin auf.
+-- Signatur: (skin, [ped,] [callback])
+-- Ped als 2. Argument: Preview-Ped in der Charakterauswahl.
+-- Ohne Ped: Skin auf den Spieler-Ped anwenden (normaler Login).
+AddEventHandler('skinchanger:loadSkin', function(skin, pedOrCb, cbOrNil)
     -- JSON-String → Tabelle dekodieren (ESX liefert users.skin als String)
     if type(skin) == 'string' and #skin > 2 then
         skin = json.decode(skin)
     end
     if type(skin) ~= 'table' then
-        if cb then cb() end
+        local cb = type(pedOrCb) == 'function' and pedOrCb or cbOrNil
+        if type(cb) == 'function' then cb() end
         return
     end
+
+    -- Erkennen ob 2. Parameter ein Ped-Handle oder ein Callback ist
+    local targetPed, cb
+    if type(pedOrCb) == 'number' and pedOrCb > 0 and DoesEntityExist(pedOrCb) then
+        targetPed = pedOrCb
+        cb        = cbOrNil
+    else
+        targetPed = nil
+        cb        = type(pedOrCb) == 'function' and pedOrCb or cbOrNil
+    end
+
     -- ESX/Skinchanger Flat-Format → AWskin konvertieren falls nötig
     local awSkin = esxSkinToAW(skin)
-    if awSkin then
-        CreateThread(function()
-            applySkin(awSkin)
-            if cb then cb() end
-        end)
-    else
-        if cb then cb() end
+    if not awSkin then
+        if type(cb) == 'function' then cb() end
+        return
     end
+
+    CreateThread(function()
+        if targetPed and DoesEntityExist(targetPed) then
+            -- Preview-Ped in der Charakterauswahl: Aussehen direkt anwenden
+            dbg('skinchanger:loadSkin → Preview-Ped %d', targetPed)
+            SetPedDefaultComponentVariation(targetPed)
+            Wait(0)
+            applyAppearanceToPed(targetPed, awSkin)
+        else
+            -- Spieler-Ped: normaler Skin-Apply inkl. Modellwechsel
+            dbg('skinchanger:loadSkin → Spieler-Ped')
+            applySkin(awSkin)
+        end
+        if type(cb) == 'function' then cb() end
+    end)
 end)
