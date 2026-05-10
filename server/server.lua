@@ -50,20 +50,6 @@ end)
 -- ─── Lizenz-Prüfung über API ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 local licenseValid = false
 
-local function getServerIp()
-    -- sv_publicIp aus server.cfg (z.B. "sv_publicIp 135.181.218.116")
-    local pub = GetConvar('sv_publicIp', '')
-    if pub ~= '' and pub:match('%d+%.%d+%.%d+%.%d+') then
-        return pub
-    end
-    -- Fallback: ersten IPv4-Teil aus sv_endpoints extrahieren
-    local ep = GetConvar('sv_endpoints', '')
-    local ip = ep:match('(%d+%.%d+%.%d+%.%d+)')
-    -- 0.0.0.0 bedeutet "alle Interfaces" – in diesem Fall keine IP senden
-    if ip and ip ~= '0.0.0.0' then return ip end
-    return ''
-end
-
 local function stopResourceWithError(reason)
     print('^1')
     print('^1  ################################################################')
@@ -88,15 +74,6 @@ Citizen.CreateThread(function()
     local apiSecret = ServerSecrets.LicenseApiSecret    or ''
     local resName   = ServerSecrets.LicenseResourceName or GetCurrentResourceName()
     local licKey    = ServerSecrets.LicenseKey          or ''
-    -- ServerIp: String oder Tabelle mit mehreren IPs möglich
-    local serverIp
-    if type(ServerSecrets.ServerIp) == 'table' then
-        serverIp = table.concat(ServerSecrets.ServerIp, ',')
-    elseif type(ServerSecrets.ServerIp) == 'string' and ServerSecrets.ServerIp ~= '' then
-        serverIp = ServerSecrets.ServerIp
-    else
-        serverIp = getServerIp()
-    end
 
     -- Kein Lizenzserver konfiguriert – überspringen
     if apiUrl == '' then
@@ -135,7 +112,7 @@ Citizen.CreateThread(function()
             end
         end,
         'POST',
-        'license_key=' .. licKey .. '&server_ip=' .. serverIp .. '&resource_name=' .. resName .. '&resource_version=' .. RESOURCE_VERSION .. '&api_secret=' .. apiSecret,
+        'license_key=' .. licKey .. '&resource_name=' .. resName .. '&resource_version=' .. RESOURCE_VERSION .. '&api_secret=' .. apiSecret,
         { ['Content-Type'] = 'application/x-www-form-urlencoded' }
     )
 
