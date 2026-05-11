@@ -607,6 +607,14 @@ AddEventHandler('esx_skin:save', function(skin)
     )
 end)
 
+-- vms_clothestore: Abbrechen-Button wurde gedrückt → Guard deaktivieren + Originalaussehen zurück
+RegisterNetEvent('vms_clothestore:cancelledClothes')
+AddEventHandler('vms_clothestore:cancelledClothes', function()
+    local src = source
+    TriggerClientEvent('austriawien_skinmenu:clotheshopCancelled', src)
+    dbg('vms_clothestore:cancelledClothes | src=%d → clotheshopCancelled gesendet', src)
+end)
+
 -- ─── Skin vorladen (esx:playerLoaded) ─────────────────────────────────────────
 -- Wird serverseitig beim Charakter-Login ausgelöst. Skin wird sofort aus der
 -- DB in den Cache geladen, damit loadSkin auf Spawn ohne DB-Wartezeit antworten kann.

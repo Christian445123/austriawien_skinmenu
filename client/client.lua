@@ -865,9 +865,10 @@ end)
 -- esx_skin läuft NICHT. Wir registrieren dieselben Event-Namen so dass alle
 -- Ressourcen die esx_skin-Events nutzen automatisch mit unserem Menü arbeiten.
 
-local skinLoaded       = false
-local lastSkin         = nil   -- Cache für esx_skin:getLastSkin Kompatibilität
-local clotheshopActive = false -- true wenn vms_clothestore / externer Shop offen ist
+local skinLoaded         = false
+local lastSkin           = nil   -- Cache für esx_skin:getLastSkin Kompatibilität
+local clotheshopActive   = false -- true wenn vms_clothestore / externer Shop offen ist
+local clotheshopFrameCount = 0   -- Frame-Zähler für Sicherheits-Timeout im Guard
 
 -- ── Spieler-Login: Skin laden ─────────────────────────────────────────────
 -- esx_identity / zr-identity triggern nach der Anmeldung 'esx_skin:playerRegistered'.
@@ -933,8 +934,23 @@ end)
 RegisterNetEvent('austriawien_skinmenu:clotheshopOpened')
 AddEventHandler('austriawien_skinmenu:clotheshopOpened', function()
     if clotheshopActive then return end  -- bereits aktiv
-    clotheshopActive = true
+    clotheshopActive     = true
+    clotheshopFrameCount = 0
     dbg('clotheshopOpened: Appearance-Guard gestartet')
+end)
+
+-- ── Clotheshop abgebrochen (Abbrechen-Button, kein Kauf) ───────────────────
+-- vms_clothestore feuert 'vms_clothestore:cancelledClothes' NICHT immer.
+-- Wir fangen den NUI-Callback 'cancelClothes' der Resource ab (falls möglich).
+-- Alternativ greift der 18000-Frame-Timeout im Guard.
+RegisterNetEvent('austriawien_skinmenu:clotheshopCancelled')
+AddEventHandler('austriawien_skinmenu:clotheshopCancelled', function()
+    clotheshopActive     = false
+    clotheshopFrameCount = 0
+    dbg('clotheshopCancelled: Guard deaktiviert, Originalsksin wird wiederhergestellt')
+    if lastAppliedSkin then
+        applyAppearanceToPed(PlayerPedId(), lastAppliedSkin)
+    end
 end)
 
 -- ── Clotheshop/externe Ressource hat Skin gespeichert → Client-Cache aktualisieren ──
@@ -1055,18 +1071,29 @@ AddEventHandler('esx:playerLoaded', function()
 end)
 
 -- ─── Globaler Appearance-Guard (immer aktiv, auch im Clotheshop) ─────────────
--- • Normale Zeit: alle 500ms nur Haar-Check (günstig)
--- • Clotheshop aktiv: jeden Frame Haar + HeadBlend + Haarfarbe erzwingen
---   so dass der Charakter im Shop immer exakt wie sein gespeicherter Skin aussieht.
+-- • Clotheshop aktiv (Wait(0) – jeden Frame):
+--   Erzwingt Haare, HeadBlend, Haarfarbe, Augenfarbe UND alle Overlays
+--   damit GTA V's Overlay-Reset durch SetPedComponentVariation unsichtbar bleibt.
+-- • Normalbetrieb (Wait(500)):
+--   Nur Haar-Drawable prüfen und bei Bedarf korrigieren.
 CreateThread(function()
     while true do
         local ped     = PlayerPedId()
         local refSkin = isMenuOpen and currentSkin or lastAppliedSkin
 
         if clotheshopActive and lastAppliedSkin then
-            -- ── Clotheshop aktiv: jeden Frame Haar + HeadBlend sichern ─────────
+            -- ── Clotheshop-Modus: kompletten Appearance-Zustand jeden Frame erzwingen ──
+            clotheshopFrameCount = clotheshopFrameCount + 1
+            -- Sicherheits-Timeout: nach ~5 Minuten (18000 Frames) auto-reset
+            if clotheshopFrameCount > 18000 then
+                clotheshopActive      = false
+                clotheshopFrameCount  = 0
+            end
+
             local h = lastAppliedSkin.components and lastAppliedSkin.components.hair
             local f = lastAppliedSkin.face
+
+            -- Haare erzwingen
             if h and (h.drawable or 0) >= 0 then
                 local hairSlot = SLOT_MAP['hair']
                 if hairSlot then
@@ -1074,17 +1101,40 @@ CreateThread(function()
                     SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxT), 0)
                 end
             end
+
             if f then
+                -- HeadBlend (Gesichtsform + Hautton)
                 SetPedHeadBlendData(ped,
                     f.shapeFirst  or 0, f.shapeSecond or 0, 0,
                     f.skinFirst   or 0, f.skinSecond  or 0, 0,
                     f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
                 )
+                -- Haarfarbe + Augenfarbe
                 SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
                 SetPedEyeColor(ped, f.eyeColor or 0)
+                -- ALLE Overlays neu setzen (Bart id=1, Augenbrauen id=2, usw.)
+                -- GTA V setzt Overlays bei SetPedComponentVariation zurück → jeden Frame korrigieren
+                if f.overlays then
+                    for _, ov in ipairs(f.overlays) do
+                        SetPedHeadOverlay(ped, ov.id, ov.index, ov.opacity)
+                        if ov.colorType and ov.colorType > 0 then
+                            SetPedHeadOverlayColor(ped, ov.id, ov.colorType, ov.color1 or 0, ov.color2 or 0)
+                        end
+                    end
+                end
+                if f.eyebrowColor then
+                    SetPedHeadOverlayColor(ped, 2, 1, f.eyebrowColor, 0)
+                end
+                -- Gesichtszüge sichern
+                if f.features then
+                    for i, val in ipairs(f.features) do
+                        SetPedFaceFeature(ped, i - 1, val)
+                    end
+                end
             end
             Wait(0)  -- jeden Frame
         else
+            clotheshopFrameCount = 0
             -- ── Normalbetrieb: alle 500ms nur Haar-Reset prüfen ─────────────
             local h = refSkin and refSkin.components and refSkin.components.hair
             if h and (h.drawable or 0) >= 0 then
