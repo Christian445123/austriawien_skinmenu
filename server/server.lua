@@ -411,8 +411,8 @@ AddEventHandler('austriawien_skinmenu:saveSkin', function(skinData, targetIdenti
     skinCache[identifier] = skinJson
 
     MySQL.update(
-        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
-        { Config.DatabaseTable, identifier, skinJson, skinJson },
+        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = VALUES(skin), updated_at = NOW()',
+        { Config.DatabaseTable, identifier, skinJson },
         function(affectedRows)
             dbg('saveSkin: affectedRows=%d', affectedRows or 0)
             if affectedRows and affectedRows > 0 then
@@ -572,8 +572,8 @@ AddEventHandler('esx_skin:save', function(skin)
     -- Client-Cache sofort aktualisieren damit Autosave die neuen Klamotten nicht überschreibt
     TriggerClientEvent('austriawien_skinmenu:skinCacheUpdate', src, skinJson)
     MySQL.update(
-        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
-        { Config.DatabaseTable, identifier, skinJson, skinJson },
+        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = VALUES(skin), updated_at = NOW()',
+        { Config.DatabaseTable, identifier, skinJson },
         function()
             MySQL.update('UPDATE users SET skin = ? WHERE identifier = ?', { esxJson, identifier })
         end
@@ -645,8 +645,8 @@ AddEventHandler('austriawien_skinmenu:autoSave', function(skinData)
         awSkin._pos and string.format('%.1f,%.1f,%.1f', awSkin._pos.x, awSkin._pos.y, awSkin._pos.z) or 'keine')
 
     MySQL.update(
-        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
-        { Config.DatabaseTable, identifier, skinJson, skinJson },
+        'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = VALUES(skin), updated_at = NOW()',
+        { Config.DatabaseTable, identifier, skinJson },
         function()
             MySQL.update('UPDATE users SET skin = ? WHERE identifier = ?', { esxJson, identifier })
         end
@@ -688,8 +688,8 @@ AddEventHandler('playerDropped', function()
         end
         dbg('playerDropped: Skin-Cache für %s in DB schreiben', identifier)
         MySQL.update(
-            'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
-            { Config.DatabaseTable, identifier, cached, cached },
+            'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = VALUES(skin), updated_at = NOW()',
+            { Config.DatabaseTable, identifier, cached },
             function()
                 local awSkin  = json.decode(cached)
                 local esxData = awSkin and awSkinToEsx(awSkin)
