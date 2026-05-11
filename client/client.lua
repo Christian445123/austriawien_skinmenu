@@ -493,6 +493,9 @@ local function openSkinMenu()
         }
     end
 
+    -- ── Hair-Guard-Loop wurde durch den globalen Hair-Guard ersetzt ──────────────
+    -- (läuft permanent in einem eigenen Thread, siehe Ende dieser Datei)
+
     SendNUIMessage({
         type          = 'openMenu',
         skin          = currentSkin,
@@ -565,17 +568,24 @@ RegisterNUICallback('updateSlot', function(data, cb)
             SetPedPropIndex(ped, slot.index, data.drawable, tex, true)
             cb({ maxTexture = maxTex })
         end
-        -- Nach jedem Prop-Wechsel (Hut, Brille, Ohr, Uhr, Armband) Haare sofort
-        -- neu setzen. GTA V setzt den Hair-Component (2) bei bestimmten Hut-Drawables
-        -- automatisch auf 0 (Glatze) – das hier verhindert diesen Reset.
-        local hairSlot = SLOT_MAP['hair']
-        local h = currentSkin and currentSkin.components and currentSkin.components.hair
-        if not h then
-            h = lastAppliedSkin and lastAppliedSkin.components and lastAppliedSkin.components.hair
-        end
-        if hairSlot and h and (h.drawable or 0) >= 0 then
-            local maxHairTex = math.max(0, GetNumberOfPedTextureVariations(ped, hairSlot.index, h.drawable) - 1)
-            SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxHairTex), 0)
+        -- GTA V setzt Hair-Component (2) bei Hut-Drawables automatisch auf 0 (Glatze)
+        -- ABER das passiert ASYNCHRON im nächsten Frame – daher in einem Thread mit Wait(0).
+        local _ped       = ped
+        local _hairSlot  = SLOT_MAP['hair']
+        local _h         = (currentSkin and currentSkin.components and currentSkin.components.hair)
+                        or (lastAppliedSkin and lastAppliedSkin.components and lastAppliedSkin.components.hair)
+        if _hairSlot and _h and (_h.drawable or 0) >= 0 then
+            CreateThread(function()
+                Wait(0)   -- nächsten Frame abwarten damit GTA V-Reset zuerst passiert
+                if not DoesEntityExist(_ped) then return end
+                local maxHairTex = math.max(0, GetNumberOfPedTextureVariations(_ped, _hairSlot.index, _h.drawable) - 1)
+                SetPedComponentVariation(_ped, _hairSlot.index, _h.drawable, math.min(_h.texture or 0, maxHairTex), 0)
+                -- Haarfarbe ebenfalls neu setzen (manche Hüte resetten auch die Farbe)
+                local _f = (currentSkin and currentSkin.face) or (lastAppliedSkin and lastAppliedSkin.face)
+                if _f then
+                    SetPedHairColor(_ped, _f.hairColor1 or 0, _f.hairColor2 or 0)
+                end
+            end)
         end
     end
 end)
@@ -1029,6 +1039,38 @@ end)
 AddEventHandler('esx:playerLoaded', function()
     dbg('esx:playerLoaded → reset')
     skinLoaded = false
+end)
+
+-- ─── Globaler Hair-Guard (immer aktiv, auch im Clotheshop) ───────────────────
+-- vms_clothestore (und andere externe Ressourcen) rufen SetPedPropIndex auf.
+-- GTA V setzt dabei den Hair-Component (2) automatisch auf Drawable 0 zurück.
+-- Dieser Guard läuft permanent und korrigiert das, unabhängig davon welches Menü gerade offen ist.
+-- Wenn unser eigenes Menü offen ist und der Spieler aktiv die Haare ändert,
+-- wird currentSkin.components.hair sofort beim Wechsel aktualisiert (siehe updateSlot)
+-- damit der Guard den neuen Wert schützt statt den alten zu erzwingen.
+CreateThread(function()
+    while true do
+        Wait(333)
+        -- Haare cachen aus dem passenden Skin: unser Menü → currentSkin, sonst lastAppliedSkin
+        local refSkin = isMenuOpen and currentSkin or lastAppliedSkin
+        local h = refSkin and refSkin.components and refSkin.components.hair
+        if h and (h.drawable or 0) >= 0 then
+            local ped      = PlayerPedId()
+            local hairSlot = SLOT_MAP['hair']
+            if hairSlot then
+                local actual = GetPedDrawableVariation(ped, hairSlot.index)
+                if actual ~= (h.drawable or 0) then
+                    local maxT = math.max(0, GetNumberOfPedTextureVariations(ped, hairSlot.index, h.drawable) - 1)
+                    SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxT), 0)
+                    local f = (isMenuOpen and currentSkin and currentSkin.face) or (lastAppliedSkin and lastAppliedSkin.face)
+                    if f then
+                        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+                    end
+                    dbg('GlobalHairGuard: korrigiert drawable %d→%d', actual, h.drawable or 0)
+                end
+            end
+        end
+    end
 end)
 
 -- ─── Periodischer Cache-Update (alle 5-10 Sekunden) ─────────────────────────
