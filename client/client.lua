@@ -865,8 +865,9 @@ end)
 -- esx_skin läuft NICHT. Wir registrieren dieselben Event-Namen so dass alle
 -- Ressourcen die esx_skin-Events nutzen automatisch mit unserem Menü arbeiten.
 
-local skinLoaded = false
-local lastSkin   = nil  -- Cache für esx_skin:getLastSkin Kompatibilität
+local skinLoaded       = false
+local lastSkin         = nil   -- Cache für esx_skin:getLastSkin Kompatibilität
+local clotheshopActive = false -- true wenn vms_clothestore / externer Shop offen ist
 
 -- ── Spieler-Login: Skin laden ─────────────────────────────────────────────
 -- esx_identity / zr-identity triggern nach der Anmeldung 'esx_skin:playerRegistered'.
@@ -928,6 +929,47 @@ AddEventHandler('esx_skin:openSaveableRestrictedMenu', function()
     openSkinMenu()
 end)
 
+-- ── Clotheshop hat Skin abgerufen → Gesicht nach kurzer Verzögerung wiederherstellen ──
+-- vms_clothestore ruft esx_skin:getPlayerSkin auf und wendet danach die Klamotten an.
+-- Dabei wird SetPedHeadBlendData oft NICHT aufgerufen → Gesicht sieht falsch aus.
+-- Wir warten 800ms (bis der Shop fertig ist) und setzen dann Gesicht + Overlays neu.
+RegisterNetEvent('austriawien_skinmenu:clotheshopOpened')
+AddEventHandler('austriawien_skinmenu:clotheshopOpened', function()
+    clotheshopActive = true
+    dbg('clotheshopOpened: Gesicht-Wiederherstellung in 800ms')
+    CreateThread(function()
+        Wait(800)
+        if not clotheshopActive then return end
+        if not lastAppliedSkin or not lastAppliedSkin.face then return end
+        local ped = PlayerPedId()
+        local f   = lastAppliedSkin.face
+        SetPedHeadBlendData(ped,
+            f.shapeFirst  or 0, f.shapeSecond or 0, 0,
+            f.skinFirst   or 0, f.skinSecond  or 0, 0,
+            f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
+        )
+        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+        SetPedEyeColor(ped, f.eyeColor or 0)
+        if f.features then
+            for i, val in ipairs(f.features) do
+                SetPedFaceFeature(ped, i - 1, val)
+            end
+        end
+        if f.overlays then
+            for _, ov in ipairs(f.overlays) do
+                SetPedHeadOverlay(ped, ov.id, ov.index, ov.opacity)
+                if ov.colorType and ov.colorType > 0 then
+                    SetPedHeadOverlayColor(ped, ov.id, ov.colorType, ov.color1 or 0, ov.color2 or 0)
+                end
+            end
+        end
+        if f.eyebrowColor then
+            SetPedHeadOverlayColor(ped, 2, 1, f.eyebrowColor, 0)
+        end
+        dbg('clotheshopOpened: Gesicht wiederhergestellt (shapeFirst=%d skinFirst=%d)', f.shapeFirst or 0, f.skinFirst or 0)
+    end)
+end)
+
 -- ── Clotheshop/externe Ressource hat Skin gespeichert → Client-Cache aktualisieren ──
 -- Wird vom Server nach esx_skin:save gefeuert damit lastAppliedSkin aktuell bleibt
 -- und der Autosave die neuen Klamotten nicht überschreibt.
@@ -952,9 +994,13 @@ AddEventHandler('austriawien_skinmenu:skinCacheUpdate', function(skinJson)
         dbg('skinCacheUpdate: Face-Daten aus lokalem Cache übernommen (Clotheshop hat keine mitgeschickt)')
     end
 
-    lastSkin        = skin
-    lastAppliedSkin = skin
-    dbg('skinCacheUpdate: lastAppliedSkin aktualisiert (Clotheshop/externe Ressource)')
+    clotheshopActive = false
+    lastSkin         = skin
+    lastAppliedSkin  = skin
+    dbg('skinCacheUpdate: lastAppliedSkin aktualisiert + vollen Skin anwenden (Clotheshop/externe Ressource)')
+    -- Vollständigen Skin (Klamotten + Gesicht) auf den Ped anwenden damit
+    -- nach dem Kauf sofort alles korrekt aussieht ohne Spawn/Login abwarten.
+    applyAppearanceToPed(PlayerPedId(), skin)
 end)
 
 -- ── Unser Server antwortet auf loadSkin ──────────────────────────────────
@@ -1041,21 +1087,19 @@ AddEventHandler('esx:playerLoaded', function()
     skinLoaded = false
 end)
 
--- ─── Globaler Hair-Guard (immer aktiv, auch im Clotheshop) ───────────────────
--- vms_clothestore (und andere externe Ressourcen) rufen SetPedPropIndex auf.
--- GTA V setzt dabei den Hair-Component (2) automatisch auf Drawable 0 zurück.
--- Dieser Guard läuft permanent und korrigiert das, unabhängig davon welches Menü gerade offen ist.
--- Wenn unser eigenes Menü offen ist und der Spieler aktiv die Haare ändert,
--- wird currentSkin.components.hair sofort beim Wechsel aktualisiert (siehe updateSlot)
--- damit der Guard den neuen Wert schützt statt den alten zu erzwingen.
+-- ─── Globaler Appearance-Guard (immer aktiv, auch im Clotheshop) ─────────────
+-- Schützt Haare UND Gesicht (HeadBlend/Overlays) vor ungewollten Resets durch
+-- vms_clothestore und andere externe Ressourcen.
 CreateThread(function()
     while true do
         Wait(333)
+        local ped     = PlayerPedId()
         -- Haare cachen aus dem passenden Skin: unser Menü → currentSkin, sonst lastAppliedSkin
         local refSkin = isMenuOpen and currentSkin or lastAppliedSkin
+
+        -- ── Haar-Guard ────────────────────────────────────────────────────────
         local h = refSkin and refSkin.components and refSkin.components.hair
         if h and (h.drawable or 0) >= 0 then
-            local ped      = PlayerPedId()
             local hairSlot = SLOT_MAP['hair']
             if hairSlot then
                 local actual = GetPedDrawableVariation(ped, hairSlot.index)
@@ -1066,9 +1110,20 @@ CreateThread(function()
                     if f then
                         SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
                     end
-                    dbg('GlobalHairGuard: korrigiert drawable %d→%d', actual, h.drawable or 0)
+                    dbg('GlobalGuard: Haare korrigiert %d→%d', actual, h.drawable or 0)
                 end
             end
+        end
+
+        -- ── Gesichts-Guard (nur aktiv wenn Clotheshop offen) ─────────────────
+        -- Während der Shop offen ist, setzt er HeadBlend nicht → alle 333ms nachlegen.
+        if clotheshopActive and lastAppliedSkin and lastAppliedSkin.face then
+            local f = lastAppliedSkin.face
+            SetPedHeadBlendData(ped,
+                f.shapeFirst  or 0, f.shapeSecond or 0, 0,
+                f.skinFirst   or 0, f.skinSecond  or 0, 0,
+                f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
+            )
         end
     end
 end)

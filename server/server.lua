@@ -529,6 +529,9 @@ ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb, identi
                 skin = awSkinToEsx(decoded) or decoded
             end
             dbg('esx_skin:getPlayerSkin | %s | skin=%s (flat)', targetIdentifier, skin and 'ja' or 'nil')
+            -- Client informieren dass ein Clotheshop/externe Ressource den Skin abruft.
+            -- Der Client stellt daraufhin Gesicht/HeadBlend nach kurzer Verzögerung wieder her.
+            TriggerClientEvent('austriawien_skinmenu:clotheshopOpened', source)
             cb(skin)
         end
     )
