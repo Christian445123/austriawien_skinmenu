@@ -8,14 +8,14 @@
 ServerSecrets = ServerSecrets or {}
 
 -- Lizenzschlüssel (vom Lizenzserver erhalten)
-ServerSecrets.LicenseKey         = 'A81BE1E4-469C59AC-90570735-29818352' -- Lizenzschlüssel hier eintragen
+ServerSecrets.LicenseKey         = '' -- Lizenzschlüssel hier eintragen
 
 -- URL des CG Lizenzservers (kein trailing slash)
-ServerSecrets.LicenseApiUrl       = 'https://development.gamingcommunity.at'
+ServerSecrets.LicenseApiUrl       = 'https://development.gamingcommunity.at' -- Hier kann man seine Lizenz abrufen
 
 -- API-Secret (muss mit API_SECRET in config.php übereinstimmen)
-ServerSecrets.LicenseApiSecret    = '097adbc4cb3a17b19cf51ec73166c39d6c26af8c1b5a5de2c7641ced600c7481'
+ServerSecrets.LicenseApiSecret    = '097adbc4cb3a17b19cf51ec73166c39d6c26af8c1b5a5de2c7641ced600c7481' -- Nicht ändern
 
 -- Ressourcen-Name wie er auf dem Lizenzserver eingetragen ist
-ServerSecrets.LicenseResourceName = 'austriawien_skinmenu'
+ServerSecrets.LicenseResourceName = 'austriawien_skinmenu' -- Nicht ändern sonst funktioniert die Abfrage nicht
 
