@@ -6,6 +6,8 @@ description 'AustriaWien – Skin-Menü für ESX'
 version     '1.1.2'
 author      'GamingDevelopment'
 
+provide 'esx_skin'
+
 dependencies {
     'es_extended',
     'oxmysql',

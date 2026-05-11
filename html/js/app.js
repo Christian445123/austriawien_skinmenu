@@ -138,10 +138,73 @@ const OVERLAYS = [
 ];
 
 // ─── Make-Up Farbpalette (colorType 2) ───────────────────────────────────────
+// Quelle: RAGE-MP Wiki „Makeup Colors" – exakte RGB-Werte aus den Spieldaten.
+// 64 Einträge (Index 0–63), identisch mit GTA V _GET_MAKEUP_RGB_COLOR.
 const MAKEUP_COLORS = [
-    '#f5c5a3','#f4a0a0','#e87878','#cc3333','#8b1a1a','#9b4c7a',
-    '#6b2d5e','#8b5a2b','#5c3317','#e8785a','#d4864a','#f4c8a0',
-    '#b08090','#6b1a2a','#1a1a1a','#808080'
+    '#992532', // 0  Dunkles Rot
+    '#c8395d', // 1  Leuchtendes Pink-Rot
+    '#bd516c', // 2  Pink-Rot
+    '#b8637a', // 3  Altrosa
+    '#a6526b', // 4  Dunkles Altrosa
+    '#b1434c', // 5  Koralle-Rot
+    '#7f3133', // 6  Dunkelrot
+    '#a4645d', // 7  Rötliches Braun
+    '#c18779', // 8  Salmon
+    '#cba096', // 9  Helles Salmon
+    '#c6918f', // 10 Zartes Pink
+    '#ab6f63', // 11 Mittelbraun-Rot
+    '#b06050', // 12 Koralle
+    '#a84c33', // 13 Dunkle Koralle
+    '#b47178', // 14 Mauve
+    '#ca7f92', // 15 Helles Mauve
+    '#ed9cbe', // 16 Helles Pink
+    '#e775a4', // 17 Pink
+    '#de3e81', // 18 Kräftiges Pink
+    '#b34c6e', // 19 Dunkles Pink
+    '#712739', // 20 Dunkles Weinrot
+    '#4f1f2a', // 21 Sehr dunkles Weinrot
+    '#aa222f', // 22 Mittleres Rot
+    '#de2034', // 23 Leuchtendes Rot
+    '#cf0813', // 24 Knallrot
+    '#e55470', // 25 Rosa-Rot
+    '#dc3fb5', // 26 Magenta
+    '#c227b2', // 27 Dunkles Magenta
+    '#a01ca9', // 28 Lila-Magenta
+    '#6e1875', // 29 Dunkles Lila
+    '#731465', // 30 Tiefes Lila
+    '#56165c', // 31 Sehr dunkles Lila
+    '#6d1a9d', // 32 Blau-Lila
+    '#1b3771', // 33 Dunkelblau
+    '#1d4ea7', // 34 Königsblau
+    '#1e74bb', // 35 Blau
+    '#21a3ce', // 36 Hellblau
+    '#25c2d2', // 37 Türkis
+    '#23cca5', // 38 Blau-Grün
+    '#27c07d', // 39 Mintgrün
+    '#1b9c32', // 40 Grün
+    '#148604', // 41 Dunkelgrün
+    '#70d041', // 42 Hellgrün
+    '#c5ea34', // 43 Gelbgrün
+    '#e1e32f', // 44 Grüngelb
+    '#ffdd26', // 45 Gelb
+    '#fac026', // 46 Dunkelgelb
+    '#f78a27', // 47 Orange
+    '#fe5910', // 48 Orange-Rot
+    '#be6e19', // 49 Dunkelorange
+    '#f7c97f', // 50 Hellgelb
+    '#fbe5c0', // 51 Crème
+    '#f5f5f5', // 52 Weiß
+    '#b3b4b3', // 53 Hellgrau
+    '#919191', // 54 Grau
+    '#564e4e', // 55 Dunkelgrau
+    '#180e0e', // 56 Fast Schwarz
+    '#58969e', // 57 Stahlblau
+    '#4d6f8c', // 58 Schieferblau
+    '#1a2b55', // 59 Marineblau
+    '#a07e6b', // 60 Hellbraun
+    '#826355', // 61 Mittelbraun
+    '#6d5346', // 62 Dunkelbraun
+    '#3e2d27', // 63 Sehr dunkles Braun
 ];
 
 // ─── Ressourcen-Name ──────────────────────────────────────────────────────────

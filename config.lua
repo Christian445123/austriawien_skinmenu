@@ -36,3 +36,8 @@ Config.AllowedModels = {
     'mp_m_freemode_01',
     'mp_f_freemode_01'
 }
+
+-- ─── Letzte Position wiederherstellen ─────────────────────────────────────────
+-- true  → Spieler spawnt beim nächsten Login an seiner letzten Position
+-- false → Spawn-Position wird vom Spawn-System des Servers bestimmt
+Config.RestoreLastPosition = true

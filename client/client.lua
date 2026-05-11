@@ -308,9 +308,14 @@ local function applySkin(skin)
                     Wait(100); t = t + 1
                 end
                 if HasModelLoaded(targetHash) then
+                    -- Position/Heading sichern: SetPlayerModel teleportiert sonst zur GTA-Defaultposition
+                    local coords  = GetEntityCoords(ped)
+                    local heading = GetEntityHeading(ped)
                     SetPlayerModel(PlayerId(), targetHash)
                     SetModelAsNoLongerNeeded(targetHash)
                     ped = PlayerPedId()
+                    SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, false)
+                    SetEntityHeading(ped, heading)
                 end
             end
         end
@@ -586,7 +591,7 @@ end)
 
 -- Kamera drehen
 RegisterNUICallback('rotateCamera', function(data, cb)
-    camAngle = camAngle + (data.direction == 'left' and -20.0 or 20.0)
+    camAngle = camAngle + (data.direction == 'left' and 20.0 or -20.0)
     updateCameraPos()
     cb({})
 end)
@@ -878,11 +883,26 @@ AddEventHandler('esx_skin:openSaveableRestrictedMenu', function()
     openSkinMenu()
 end)
 
+-- ── Clotheshop/externe Ressource hat Skin gespeichert → Client-Cache aktualisieren ──
+-- Wird vom Server nach esx_skin:save gefeuert damit lastAppliedSkin aktuell bleibt
+-- und der Autosave die neuen Klamotten nicht überschreibt.
+RegisterNetEvent('austriawien_skinmenu:skinCacheUpdate')
+AddEventHandler('austriawien_skinmenu:skinCacheUpdate', function(skinJson)
+    if not skinJson or skinJson == '' then return end
+    local skin = json.decode(skinJson)
+    if not skin then return end
+    skin = esxSkinToAW(skin)
+    lastSkin        = skin
+    lastAppliedSkin = skin
+    dbg('skinCacheUpdate: lastAppliedSkin aktualisiert (Clotheshop/externe Ressource)')
+end)
+
 -- ── Unser Server antwortet auf loadSkin ──────────────────────────────────
 RegisterNetEvent('austriawien_skinmenu:applySkin')
 AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     dbg('applySkin | firstLogin=%s | len=%d', tostring(firstLogin), skinJson and #skinJson or 0)
     if firstLogin then
+        needsPositionRestore = false  -- Erstes Mal: kein Position-Restore (noch keine gespeichert)
         dbg('Erster Login → Menü öffnen')
         CreateThread(function() Wait(300); openSkinMenu() end)
         return
@@ -890,6 +910,10 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
     if not skinJson or skinJson == '' then return end
     local skin = json.decode(skinJson)
     if skin then
+        -- Gespeicherte Position vor der Format-Konvertierung extrahieren
+        local savedPos = skin._pos
+        skin._pos = nil
+
         -- Format-Konvertierung: ESX/Skinchanger Flat-Format → AWskin
         -- (esxSkinToAW ist eine No-Op wenn bereits AWskin-Format)
         dbg('applySkin Event: Format=%s | Modell=%s | Face=%s | Komponenten=%s',
@@ -907,15 +931,39 @@ AddEventHandler('austriawien_skinmenu:applySkin', function(skinJson, firstLogin)
             skin.face and skin.face.skinFirst  or -1
         )
         applySkin(skin)
+
+        -- Letzte Position wiederherstellen (nur beim Spawn, einmalig pro Spawn-Zyklus)
+        if needsPositionRestore and savedPos and savedPos.x then
+            needsPositionRestore = false
+            local px, py, pz, ph = savedPos.x, savedPos.y, savedPos.z, savedPos.h or 0.0
+            dbg('Position wiederherstellen: %.1f, %.1f, %.1f h=%.1f', px, py, pz, ph)
+            CreateThread(function()
+                Wait(500)  -- kurz warten bis Spawn-System fertig ist
+                local ped = PlayerPedId()
+                SetEntityCoords(ped, px, py, pz, false, false, false, false)
+                SetEntityHeading(ped, ph)
+                -- Nochmal nach einem weiteren Frame setzen (Spawn-Systeme können coords überschreiben)
+                Wait(200)
+                SetEntityCoords(PlayerPedId(), px, py, pz, false, false, false, false)
+                SetEntityHeading(PlayerPedId(), ph)
+            end)
+        else
+            needsPositionRestore = false
+        end
     else
         dbg('FEHLER: json.decode fehlgeschlagen | JSON-Anfang: %s', tostring(skinJson and skinJson:sub(1, 80) or 'nil'))
     end
 end)
 
+-- Flag: beim nächsten applySkin-Event soll die gespeicherte Position wiederhergestellt werden.
+local needsPositionRestore = false
+
 -- ── esx:onPlayerSpawn: Skin wiederherstellen (auch nach Aduty) ──────────────
 AddEventHandler('esx:onPlayerSpawn', function()
     dbg('esx:onPlayerSpawn | skinLoaded=%s | cache=%s', tostring(skinLoaded), tostring(lastAppliedSkin ~= nil))
     skinLoaded = true
+    -- Position beim nächsten Skin-Load wiederherstellen (nur wenn aktiviert)
+    needsPositionRestore = Config.RestoreLastPosition == true
     -- Gecachten Skin SOFORT anwenden (verhindert dass Spieler kurzzeitig als
     -- falsches Modell / weiblicher Standard-Ped erscheint, z.B. nach Aduty).
     if lastAppliedSkin and lastAppliedSkin.model then
@@ -933,33 +981,44 @@ AddEventHandler('esx:playerLoaded', function()
     skinLoaded = false
 end)
 
--- ─── Periodischer Autosave (alle 2-5 Minuten) ────────────────────────────────
--- Speichert den aktuellen Skin regelmäßig damit Änderungen (z.B. nach dem
--- Kleidungskauf) nicht verloren gehen, selbst wenn der Spieler crasht.
+-- ─── Periodischer Cache-Update (alle 5-10 Sekunden) ─────────────────────────
+-- Schreibt Skin + aktuelle Position alle 5-10 Sek. in den Server-RAM-Cache.
+-- Kein DB-Write – das passiert erst beim Disconnect (playerDropped / autoSave).
 CreateThread(function()
     while true do
-        -- Zufälliges Intervall zwischen 120 und 300 Sekunden (2-5 Minuten)
-        local interval = math.random(120, 300) * 1000
+        local interval = math.random(5, 10) * 1000
         Wait(interval)
-        -- Nur wenn ESX geladen, kein Menü offen und ein Skin im Cache ist
         if ESX and not isMenuOpen and lastAppliedSkin and lastAppliedSkin.model then
-            dbg('Periodischer Autosave (Intervall: %d Sek.)', interval / 1000)
-            TriggerServerEvent('austriawien_skinmenu:autoSave', lastAppliedSkin)
+            local payload = {}
+            for k, v in pairs(lastAppliedSkin) do payload[k] = v end
+            local ped    = PlayerPedId()
+            local coords = GetEntityCoords(ped)
+            payload._pos = { x = coords.x, y = coords.y, z = coords.z, h = GetEntityHeading(ped) }
+            dbg('Cache-Update (%d Sek.) | Pos=%.1f,%.1f,%.1f', interval / 1000, coords.x, coords.y, coords.z)
+            TriggerServerEvent('austriawien_skinmenu:cacheUpdate', payload)
         end
     end
 end)
 
 -- ─── Autosave bei Logout / Ressource-Stop ─────────────────────────────────────────
--- Schickt den aktuellen Skin-Status an den Server sobald der Spieler sich
--- ausloggt oder die Ressource neu gestartet wird.
+-- Schickt den aktuellen Skin-Status + aktuelle Position an den Server.
+-- Position wird serverseitig gespeichert und beim nächsten Spawn wiederhergestellt.
 local function autoSaveSkin()
     local skin = lastAppliedSkin
     if not skin or not skin.model then
         skin = readCurrentSkin()
     end
     if skin then
-        dbg('autoSaveSkin: sende aktuellen Skin an Server')
-        TriggerServerEvent('austriawien_skinmenu:autoSave', skin)
+        -- Shallow-Copy damit _pos den gecachten Skin nicht dauerhaft verändert
+        local payload = {}
+        for k, v in pairs(skin) do payload[k] = v end
+        -- Aktuelle Position und Blickrichtung einbetten
+        local ped     = PlayerPedId()
+        local coords  = GetEntityCoords(ped)
+        local heading = GetEntityHeading(ped)
+        payload._pos  = { x = coords.x, y = coords.y, z = coords.z, h = heading }
+        dbg('autoSaveSkin: Skin + Pos (%.1f,%.1f,%.1f h=%.1f) an Server', coords.x, coords.y, coords.z, heading)
+        TriggerServerEvent('austriawien_skinmenu:autoSave', payload)
     end
 end
 

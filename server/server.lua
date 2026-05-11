@@ -569,6 +569,8 @@ AddEventHandler('esx_skin:save', function(skin)
     dbg('esx_skin:save | %s | %d Bytes', identifier, #skinJson)
 
     skinCache[identifier] = skinJson
+    -- Client-Cache sofort aktualisieren damit Autosave die neuen Klamotten nicht überschreibt
+    TriggerClientEvent('austriawien_skinmenu:skinCacheUpdate', src, skinJson)
     MySQL.update(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
         { Config.DatabaseTable, identifier, skinJson, skinJson },
@@ -600,6 +602,25 @@ AddEventHandler('esx:playerLoaded', function(xPlayer)
     )
 end)
 
+-- ─── Häufiger Cache-Update (alle 5-10 Sek., kein DB-Write) ──────────────────
+-- Aktualisiert nur den Server-RAM-Cache mit Skin + Position.
+-- Der DB-Write erfolgt ausschließlich beim Disconnect (playerDropped / autoSave).
+RegisterNetEvent('austriawien_skinmenu:cacheUpdate')
+AddEventHandler('austriawien_skinmenu:cacheUpdate', function(skinData)
+    local src     = source
+    local xPlayer = ESX.GetPlayerFromId(src)
+    if not xPlayer or type(skinData) ~= 'table' then return end
+
+    local identifier = xPlayer.identifier
+    local awSkin   = esxFlatToAW(skinData)
+    if type(skinData._pos) == 'table' then
+        awSkin._pos = skinData._pos
+    end
+    skinCache[identifier] = json.encode(awSkin)
+    dbg('cacheUpdate | %s | Pos=%s', identifier,
+        awSkin._pos and string.format('%.1f,%.1f,%.1f', awSkin._pos.x, awSkin._pos.y, awSkin._pos.z) or 'keine')
+end)
+
 -- ─── Autosave bei Spieler-Disconnect ─────────────────────────────────────────
 -- Der Client sendet seinen aktuellen Skin kurz vor dem Disconnect.
 -- Als Fallback schreibt playerDropped den Cache in die DB.
@@ -611,12 +632,17 @@ AddEventHandler('austriawien_skinmenu:autoSave', function(skinData)
 
     local identifier = xPlayer.identifier
     local awSkin   = esxFlatToAW(skinData)
+    -- _pos (Position + Heading) übernehmen – wird von esxFlatToAW ignoriert
+    if type(skinData._pos) == 'table' then
+        awSkin._pos = skinData._pos
+    end
     local skinJson = json.encode(awSkin)
     local esxData  = awSkinToEsx(awSkin)
     local esxJson  = esxData and json.encode(esxData) or skinJson
 
     skinCache[identifier] = skinJson
-    dbg('autoSave | %s | %d Bytes', identifier, #skinJson)
+    dbg('autoSave | %s | %d Bytes | pos=%s', identifier, #skinJson,
+        awSkin._pos and string.format('%.1f,%.1f,%.1f', awSkin._pos.x, awSkin._pos.y, awSkin._pos.z) or 'keine')
 
     MySQL.update(
         'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
@@ -644,6 +670,22 @@ AddEventHandler('playerDropped', function()
     local cached = skinCache[identifier]
     skinCache[identifier] = nil  -- Speicher freigeben
     if cached then
+        -- Versuche aktuelle Position aus dem Server-Ped zu lesen (kurz nach Disconnect noch verfügbar).
+        -- Wenn der Client bereits einen _pos mitgeschickt hat, wird dieser überschrieben mit dem
+        -- noch präziseren Server-Wert (verhindert Positions-Sprung durch Race Condition).
+        local ok, awSkin = pcall(json.decode, cached)
+        if ok and type(awSkin) == 'table' then
+            local pedOk, coords = pcall(GetEntityCoords, GetPlayerPed(src))
+            if pedOk and coords and coords.x and coords.x ~= 0.0 then
+                local _, heading = pcall(GetEntityHeading, GetPlayerPed(src))
+                awSkin._pos = {
+                    x = coords.x, y = coords.y, z = coords.z,
+                    h = type(heading) == 'number' and heading or 0.0
+                }
+                cached = json.encode(awSkin)
+                dbg('playerDropped: Position aus Ped gesichert (%.1f,%.1f,%.1f)', coords.x, coords.y, coords.z)
+            end
+        end
         dbg('playerDropped: Skin-Cache für %s in DB schreiben', identifier)
         MySQL.update(
             'INSERT INTO ?? (identifier, skin) VALUES (?, ?) ON DUPLICATE KEY UPDATE skin = ?, updated_at = NOW()',
