@@ -929,45 +929,12 @@ AddEventHandler('esx_skin:openSaveableRestrictedMenu', function()
     openSkinMenu()
 end)
 
--- ── Clotheshop hat Skin abgerufen → Gesicht nach kurzer Verzögerung wiederherstellen ──
--- vms_clothestore ruft esx_skin:getPlayerSkin auf und wendet danach die Klamotten an.
--- Dabei wird SetPedHeadBlendData oft NICHT aufgerufen → Gesicht sieht falsch aus.
--- Wir warten 800ms (bis der Shop fertig ist) und setzen dann Gesicht + Overlays neu.
+-- ── Clotheshop hat Skin abgerufen → Clotheshop-Guard starten ────────────────
 RegisterNetEvent('austriawien_skinmenu:clotheshopOpened')
 AddEventHandler('austriawien_skinmenu:clotheshopOpened', function()
+    if clotheshopActive then return end  -- bereits aktiv
     clotheshopActive = true
-    dbg('clotheshopOpened: Gesicht-Wiederherstellung in 800ms')
-    CreateThread(function()
-        Wait(800)
-        if not clotheshopActive then return end
-        if not lastAppliedSkin or not lastAppliedSkin.face then return end
-        local ped = PlayerPedId()
-        local f   = lastAppliedSkin.face
-        SetPedHeadBlendData(ped,
-            f.shapeFirst  or 0, f.shapeSecond or 0, 0,
-            f.skinFirst   or 0, f.skinSecond  or 0, 0,
-            f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
-        )
-        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
-        SetPedEyeColor(ped, f.eyeColor or 0)
-        if f.features then
-            for i, val in ipairs(f.features) do
-                SetPedFaceFeature(ped, i - 1, val)
-            end
-        end
-        if f.overlays then
-            for _, ov in ipairs(f.overlays) do
-                SetPedHeadOverlay(ped, ov.id, ov.index, ov.opacity)
-                if ov.colorType and ov.colorType > 0 then
-                    SetPedHeadOverlayColor(ped, ov.id, ov.colorType, ov.color1 or 0, ov.color2 or 0)
-                end
-            end
-        end
-        if f.eyebrowColor then
-            SetPedHeadOverlayColor(ped, 2, 1, f.eyebrowColor, 0)
-        end
-        dbg('clotheshopOpened: Gesicht wiederhergestellt (shapeFirst=%d skinFirst=%d)', f.shapeFirst or 0, f.skinFirst or 0)
-    end)
+    dbg('clotheshopOpened: Appearance-Guard gestartet')
 end)
 
 -- ── Clotheshop/externe Ressource hat Skin gespeichert → Client-Cache aktualisieren ──
@@ -1088,42 +1055,54 @@ AddEventHandler('esx:playerLoaded', function()
 end)
 
 -- ─── Globaler Appearance-Guard (immer aktiv, auch im Clotheshop) ─────────────
--- Schützt Haare UND Gesicht (HeadBlend/Overlays) vor ungewollten Resets durch
--- vms_clothestore und andere externe Ressourcen.
+-- • Normale Zeit: alle 500ms nur Haar-Check (günstig)
+-- • Clotheshop aktiv: jeden Frame Haar + HeadBlend + Haarfarbe erzwingen
+--   so dass der Charakter im Shop immer exakt wie sein gespeicherter Skin aussieht.
 CreateThread(function()
     while true do
-        Wait(333)
         local ped     = PlayerPedId()
-        -- Haare cachen aus dem passenden Skin: unser Menü → currentSkin, sonst lastAppliedSkin
         local refSkin = isMenuOpen and currentSkin or lastAppliedSkin
 
-        -- ── Haar-Guard ────────────────────────────────────────────────────────
-        local h = refSkin and refSkin.components and refSkin.components.hair
-        if h and (h.drawable or 0) >= 0 then
-            local hairSlot = SLOT_MAP['hair']
-            if hairSlot then
-                local actual = GetPedDrawableVariation(ped, hairSlot.index)
-                if actual ~= (h.drawable or 0) then
+        if clotheshopActive and lastAppliedSkin then
+            -- ── Clotheshop aktiv: jeden Frame Haar + HeadBlend sichern ─────────
+            local h = lastAppliedSkin.components and lastAppliedSkin.components.hair
+            local f = lastAppliedSkin.face
+            if h and (h.drawable or 0) >= 0 then
+                local hairSlot = SLOT_MAP['hair']
+                if hairSlot then
                     local maxT = math.max(0, GetNumberOfPedTextureVariations(ped, hairSlot.index, h.drawable) - 1)
                     SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxT), 0)
-                    local f = (isMenuOpen and currentSkin and currentSkin.face) or (lastAppliedSkin and lastAppliedSkin.face)
-                    if f then
-                        SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
-                    end
-                    dbg('GlobalGuard: Haare korrigiert %d→%d', actual, h.drawable or 0)
                 end
             end
-        end
-
-        -- ── Gesichts-Guard (nur aktiv wenn Clotheshop offen) ─────────────────
-        -- Während der Shop offen ist, setzt er HeadBlend nicht → alle 333ms nachlegen.
-        if clotheshopActive and lastAppliedSkin and lastAppliedSkin.face then
-            local f = lastAppliedSkin.face
-            SetPedHeadBlendData(ped,
-                f.shapeFirst  or 0, f.shapeSecond or 0, 0,
-                f.skinFirst   or 0, f.skinSecond  or 0, 0,
-                f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
-            )
+            if f then
+                SetPedHeadBlendData(ped,
+                    f.shapeFirst  or 0, f.shapeSecond or 0, 0,
+                    f.skinFirst   or 0, f.skinSecond  or 0, 0,
+                    f.shapeMix    or 0.5, f.skinMix   or 0.5, 0.0, false
+                )
+                SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+                SetPedEyeColor(ped, f.eyeColor or 0)
+            end
+            Wait(0)  -- jeden Frame
+        else
+            -- ── Normalbetrieb: alle 500ms nur Haar-Reset prüfen ─────────────
+            local h = refSkin and refSkin.components and refSkin.components.hair
+            if h and (h.drawable or 0) >= 0 then
+                local hairSlot = SLOT_MAP['hair']
+                if hairSlot then
+                    local actual = GetPedDrawableVariation(ped, hairSlot.index)
+                    if actual ~= (h.drawable or 0) then
+                        local maxT = math.max(0, GetNumberOfPedTextureVariations(ped, hairSlot.index, h.drawable) - 1)
+                        SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxT), 0)
+                        local f = (isMenuOpen and currentSkin and currentSkin.face) or (lastAppliedSkin and lastAppliedSkin.face)
+                        if f then
+                            SetPedHairColor(ped, f.hairColor1 or 0, f.hairColor2 or 0)
+                        end
+                        dbg('GlobalGuard: Haare korrigiert %d→%d', actual, h.drawable or 0)
+                    end
+                end
+            end
+            Wait(500)
         end
     end
 end)
