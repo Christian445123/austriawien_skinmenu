@@ -522,9 +522,13 @@ ESX.RegisterServerCallback('esx_skin:getPlayerSkin', function(source, cb, identi
         function(result)
             local skin = nil
             if result and result[1] and result[1].skin then
-                skin = json.decode(result[1].skin)
+                local decoded = json.decode(result[1].skin)
+                -- Clotheshop und andere esx_skin-kompatible Ressourcen erwarten das
+                -- ESX/Skinchanger Flat-Format (torso_1, hair, hair_color_1, ...).
+                -- AWskin-Nested-Format zurück zu Flat konvertieren damit Haare/Gesicht erhalten bleiben.
+                skin = awSkinToEsx(decoded) or decoded
             end
-            dbg('esx_skin:getPlayerSkin | %s | skin=%s', targetIdentifier, skin and 'ja' or 'nil')
+            dbg('esx_skin:getPlayerSkin | %s | skin=%s (flat)', targetIdentifier, skin and 'ja' or 'nil')
             cb(skin)
         end
     )
@@ -562,6 +566,26 @@ AddEventHandler('esx_skin:save', function(skin)
     local identifier = xPlayer.identifier
     -- Immer zu AWskin-Format normalisieren (egal ob flat oder nicht)
     local awData  = esxFlatToAW(skin)
+
+    -- Face-Daten (Haare, Gesicht, Overlays) aus dem Server-Cache sichern:
+    -- Manche Clotheshops (z.B. esx_clotheshop) schicken nur Kleidungskomponenten
+    -- ohne HeadBlend / Overlay-Daten, was zu Haarverlust führt.
+    -- Falls die neuen Face-Daten leer/Standard sind, die gespeicherten aus dem Cache mergen.
+    local function faceIsEmpty(f)
+        if not f then return true end
+        return (f.shapeFirst or 0) == 0 and (f.shapeSecond or 0) == 0
+            and (f.hairColor1 or 0) == 0 and (f.hairColor2 or 0) == 0
+            and (f.eyeColor or 0) == 0
+    end
+
+    if faceIsEmpty(awData.face) and skinCache[identifier] then
+        local cached = json.decode(skinCache[identifier])
+        if cached and cached.face and not faceIsEmpty(cached.face) then
+            awData.face = cached.face
+            dbg('esx_skin:save | Face-Daten aus Cache übernommen (Clotheshop hat keine mitgeschickt)')
+        end
+    end
+
     local esxData = awSkinToEsx(awData) or skin
 
     local skinJson = json.encode(awData)

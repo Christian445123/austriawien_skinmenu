@@ -422,6 +422,24 @@ local function openSkinMenu()
     currentSkin  = readCurrentSkin()
     isMenuOpen   = true
 
+    -- Haare aus Cache wiederherstellen (Schutz gegen Clotheshop-/externes-Reset).
+    -- Der Ped kann durch andere Ressourcen (Clotheshop, Aduty, …) einen hair-drawable=0
+    -- bekommen haben. Wir setzen ihn sofort zurück damit der Spieler korrekt aussieht.
+    if lastAppliedSkin and lastAppliedSkin.components and lastAppliedSkin.components.hair then
+        local hairSlot = SLOT_MAP['hair']
+        if hairSlot then
+            local h = lastAppliedSkin.components.hair
+            local maxTex = math.max(0, GetNumberOfPedTextureVariations(ped, hairSlot.index, h.drawable) - 1)
+            SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxTex), 0)
+            currentSkin.components.hair = { drawable = h.drawable, texture = h.texture or 0 }
+            savedSkin.components.hair   = { drawable = h.drawable, texture = h.texture or 0 }
+            dbg('openSkinMenu: Haare aus Cache wiederhergestellt (drawable=%d)', h.drawable)
+        end
+    end
+    if lastAppliedSkin and lastAppliedSkin.face then
+        SetPedHairColor(ped, lastAppliedSkin.face.hairColor1 or 0, lastAppliedSkin.face.hairColor2 or 0)
+    end
+
     -- HeadBlend nur neu setzen wenn Cache vorhanden – verhindert visuellen Reset
     -- des Gesichts wenn lastAppliedSkin nil ist (z.B. Skin durch andere Ressource gesetzt).
     -- WICHTIG: Ohne diese Prüfung würden alle face-Werte auf 0 gesetzt → falsches Gesicht!
@@ -530,6 +548,11 @@ RegisterNUICallback('updateSlot', function(data, cb)
         local maxTex = math.max(0, GetNumberOfPedTextureVariations(ped, slot.index, data.drawable) - 1)
         local tex    = math.min(data.texture, maxTex)
         SetPedComponentVariation(ped, slot.index, data.drawable, tex, 0)
+        -- Haare im currentSkin-Cache aktuell halten damit nach einem Prop-Wechsel
+        -- die richtigen Haare wiederhergestellt werden können.
+        if slot.id == 'hair' and currentSkin.components then
+            currentSkin.components.hair = { drawable = data.drawable, texture = tex }
+        end
         -- Antwort: wieviele Texturen gibt es für dieses Drawable?
         cb({ maxTexture = maxTex })
     else
@@ -541,6 +564,18 @@ RegisterNUICallback('updateSlot', function(data, cb)
             local tex    = math.min(data.texture, maxTex)
             SetPedPropIndex(ped, slot.index, data.drawable, tex, true)
             cb({ maxTexture = maxTex })
+        end
+        -- Nach jedem Prop-Wechsel (Hut, Brille, Ohr, Uhr, Armband) Haare sofort
+        -- neu setzen. GTA V setzt den Hair-Component (2) bei bestimmten Hut-Drawables
+        -- automatisch auf 0 (Glatze) – das hier verhindert diesen Reset.
+        local hairSlot = SLOT_MAP['hair']
+        local h = currentSkin and currentSkin.components and currentSkin.components.hair
+        if not h then
+            h = lastAppliedSkin and lastAppliedSkin.components and lastAppliedSkin.components.hair
+        end
+        if hairSlot and h and (h.drawable or 0) >= 0 then
+            local maxHairTex = math.max(0, GetNumberOfPedTextureVariations(ped, hairSlot.index, h.drawable) - 1)
+            SetPedComponentVariation(ped, hairSlot.index, h.drawable, math.min(h.texture or 0, maxHairTex), 0)
         end
     end
 end)
@@ -892,6 +927,21 @@ AddEventHandler('austriawien_skinmenu:skinCacheUpdate', function(skinJson)
     local skin = json.decode(skinJson)
     if not skin then return end
     skin = esxSkinToAW(skin)
+
+    -- Face-Daten (Haare, Overlays, Gesicht) aus dem lokalen Cache retten,
+    -- falls der Clotheshop sie nicht mitgeschickt hat.
+    local function faceIsEmpty(f)
+        if not f then return true end
+        return (f.shapeFirst or 0) == 0 and (f.shapeSecond or 0) == 0
+            and (f.hairColor1 or 0) == 0 and (f.hairColor2 or 0) == 0
+            and (f.eyeColor or 0) == 0
+    end
+
+    if faceIsEmpty(skin.face) and lastAppliedSkin and not faceIsEmpty(lastAppliedSkin.face) then
+        skin.face = lastAppliedSkin.face
+        dbg('skinCacheUpdate: Face-Daten aus lokalem Cache übernommen (Clotheshop hat keine mitgeschickt)')
+    end
+
     lastSkin        = skin
     lastAppliedSkin = skin
     dbg('skinCacheUpdate: lastAppliedSkin aktualisiert (Clotheshop/externe Ressource)')
