@@ -977,12 +977,18 @@ AddEventHandler('austriawien_skinmenu:skinCacheUpdate', function(skinJson)
         dbg('skinCacheUpdate: Face-Daten aus lokalem Cache übernommen (Clotheshop hat keine mitgeschickt)')
     end
 
-    clotheshopActive = false
-    lastSkin         = skin
-    lastAppliedSkin  = skin
-    dbg('skinCacheUpdate: lastAppliedSkin aktualisiert + vollen Skin anwenden (Clotheshop/externe Ressource)')
-    -- Vollständigen Skin (Klamotten + Gesicht) auf den Ped anwenden damit
-    -- nach dem Kauf sofort alles korrekt aussieht ohne Spawn/Login abwarten.
+    -- WICHTIG: clotheshopActive NICHT deaktivieren!
+    -- vms_clothestore ruft esx_skin:save bei jeder Kleidungsvorschau auf (nicht nur beim Kauf).
+    -- Würden wir hier clotheshopActive = false setzen, deaktiviert sich der Appearance-Guard
+    -- bei jedem Klick auf eine neue Jacke/Hose → GTA V's Overlay-Reset (Bart, Haare) ist ungebremst.
+    -- Der Guard läuft weiter bis: clotheshopCancelled, clotheshopFrameCount-Timeout, oder nächstes Spawn.
+
+    lastSkin             = skin
+    lastAppliedSkin      = skin
+    clotheshopFrameCount = 0  -- Timer zurücksetzen: Guard läuft noch ~60 Sek. nach dem letzten Save
+    dbg('skinCacheUpdate: lastAppliedSkin aktualisiert (Guard bleibt aktiv, Timer reset)')
+    -- Vollständigen Skin (Klamotten + Gesicht) auf den Ped anwenden.
+    -- Korrekte Klamotten werden gesetzt; der noch laufende Guard sichert sofort danach die Overlays.
     applyAppearanceToPed(PlayerPedId(), skin)
 end)
 
@@ -1084,10 +1090,13 @@ CreateThread(function()
         if clotheshopActive and lastAppliedSkin then
             -- ── Clotheshop-Modus: kompletten Appearance-Zustand jeden Frame erzwingen ──
             clotheshopFrameCount = clotheshopFrameCount + 1
-            -- Sicherheits-Timeout: nach ~5 Minuten (18000 Frames) auto-reset
-            if clotheshopFrameCount > 18000 then
+            -- Sicherheits-Timeout: 3600 Frames (~60 Sek.) nach dem letzten esx_skin:save.
+            -- Der Counter wird bei jedem skinCacheUpdate zurückgesetzt, damit der Shop beliebig
+            -- lang offen sein kann. Deaktivierung erfolgt ~60 Sek. nach dem letzten Save.
+            if clotheshopFrameCount > 3600 then
                 clotheshopActive      = false
                 clotheshopFrameCount  = 0
+                dbg('clotheshopGuard: Timeout (3600 Frames) → Guard deaktiviert')
             end
 
             local h = lastAppliedSkin.components and lastAppliedSkin.components.hair
