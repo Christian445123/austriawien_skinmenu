@@ -541,13 +541,8 @@ function buildCategoryNav() {
         nav.appendChild(btn);
     });
 
-    // Gesicht-Tab am Ende
-    const faceBtn = document.createElement('button');
-    faceBtn.className   = 'cat-btn';
-    faceBtn.dataset.cat = 'face';
-    faceBtn.innerHTML   = '😊 Gesicht';
-    faceBtn.addEventListener('click', () => selectCategory('face'));
-    nav.appendChild(faceBtn);
+    // Gesicht-Tab ist deaktiviert: dieses Menü ist ein reines Kleidungsmenü
+    // und soll Bart / Gesichtsmerkmale nicht verändern.
 }
 
 // ─── Klick auf Equip-Slots ────────────────────────────────────────────
@@ -603,17 +598,10 @@ document.getElementById('btn-unsaved-leave').addEventListener('click', () => {
 
 // ─── Speichern / Abbrechen ────────────────────────────────────────────────────
 document.getElementById('btn-save').addEventListener('click', () => {
-    // Overlays aus overlayValues zusammenbauen
-    const overlaysArr = OVERLAYS.map(ov => {
-        const v = state.overlayValues[ov.id] || { index: 0, opacity: (ov.id === 2 ? 1.0 : 0.0), color1: 0, color2: 0 };
-        const entry = { id: ov.id, index: v.index, opacity: v.opacity };
-        if (ov.colorType > 0) {
-            entry.colorType = ov.colorType;
-            entry.color1    = v.color1 || 0;
-            entry.color2    = v.color2 || 0;
-        }
-        return entry;
-    });
+    // Gesichts-Overlays (Bart, Make-Up, …) werden NICHT aus dem UI-State gebaut,
+    // sondern 1:1 aus dem beim Öffnen geladenen Skin übernommen.
+    // So wird sichergestellt, dass das Menü Bart/Gesicht niemals verändert.
+    const originalOverlays = (state.skin.face && state.skin.face.overlays) ? state.skin.face.overlays : [];
 
     const skinToSave = {
         components: state.skin.components,
@@ -631,7 +619,7 @@ document.getElementById('btn-save').addEventListener('click', () => {
             hairColor2:   state.hairColor2,
             eyeColor:     state.eyeColor,
             eyebrowColor: state.eyebrowColor,
-            overlays:     overlaysArr
+            overlays:     originalOverlays
         }
     };
     nuiCallback('save', { skin: skinToSave });

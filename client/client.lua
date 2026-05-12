@@ -134,7 +134,10 @@ local function esxSkinToAW(s)
             -- Alle 13 GTA V Overlays (0=Hautunreinheiten bis 12=Zusatzmakel)
             overlays = {
                 { id=0,  index=s.blemishes          or 0, opacity=s.blemishes_1_opacity          or 0 },
-                { id=1,  index=s.beard              or 0, opacity=s.beard_1_opacity              or 0, colorType=1, color1=s.beard_1          or 0, color2=s.beard_2          or 0 },
+                -- Bart: Opacity nur übernehmen wenn ein Style > 0 explizit gesetzt wurde.
+                -- Viele ESX-Setups speichern beard_1_opacity=1 als Standard für ALLE Spieler,
+                -- obwohl kein Bart gewünscht ist. Style 0 + Opacity > 0 = ungewollter Bart.
+                { id=1,  index=s.beard or 0, opacity=(s.beard or 0) > 0 and (s.beard_1_opacity or 0) or 0, colorType=1, color1=s.beard_1 or 0, color2=s.beard_2 or 0 },
                 { id=2,  index=s.eyebrow            or 0, opacity=s.eyebrow_1_opacity            or 1, colorType=1, color1=s.eyebrow_1        or 0, color2=s.eyebrow_2        or 0 },
                 { id=3,  index=s.aging              or 0, opacity=s.aging_1_opacity              or 0 },
                 { id=4,  index=s.makeup             or 0, opacity=s.makeup_1_opacity             or 0, colorType=2, color1=s.makeup_1         or 0, color2=0 },
@@ -143,7 +146,8 @@ local function esxSkinToAW(s)
                 { id=7,  index=s.sun_damage         or 0, opacity=s.sun_damage_1_opacity         or 0 },
                 { id=8,  index=s.lipstick           or 0, opacity=s.lipstick_1_opacity           or 0, colorType=2, color1=s.lipstick_1       or 0, color2=0 },
                 { id=9,  index=s.freckles           or 0, opacity=s.freckles_1_opacity           or 0 },
-                { id=10, index=s.chest_hair         or 0, opacity=s.chest_hair_1_opacity         or 0, colorType=1, color1=s.chest_hair_1     or 0, color2=0 },
+                -- Brustbehaarung: gleiche Logik wie Bart
+                { id=10, index=s.chest_hair or 0, opacity=(s.chest_hair or 0) > 0 and (s.chest_hair_1_opacity or 0) or 0, colorType=1, color1=s.chest_hair_1 or 0, color2=0 },
                 { id=11, index=s.body_blemishes     or 0, opacity=s.body_blemishes_1_opacity     or 0 },
                 { id=12, index=s.add_body_blemishes or 0, opacity=s.add_body_blemishes_1_opacity or 0 },
             },
@@ -963,18 +967,13 @@ AddEventHandler('austriawien_skinmenu:skinCacheUpdate', function(skinJson)
     if not skin then return end
     skin = esxSkinToAW(skin)
 
-    -- Face-Daten (Haare, Overlays, Gesicht) aus dem lokalen Cache retten,
-    -- falls der Clotheshop sie nicht mitgeschickt hat.
-    local function faceIsEmpty(f)
-        if not f then return true end
-        return (f.shapeFirst or 0) == 0 and (f.shapeSecond or 0) == 0
-            and (f.hairColor1 or 0) == 0 and (f.hairColor2 or 0) == 0
-            and (f.eyeColor or 0) == 0
-    end
-
-    if faceIsEmpty(skin.face) and lastAppliedSkin and not faceIsEmpty(lastAppliedSkin.face) then
+    -- Gesicht-Daten IMMER aus dem lokalen Cache erzwingen.
+    -- Der Kleidungsshop darf Bart, Hautfarbe, Gesichtsform, Overlays etc. NIEMALS verändern.
+    -- GTA V setzt HeadBlend/Overlays beim Kleidungswechsel intern zurück → die vom Shop
+    -- mitgeschickten Face-Daten sind immer resettet/falsch.
+    if lastAppliedSkin and lastAppliedSkin.face then
         skin.face = lastAppliedSkin.face
-        dbg('skinCacheUpdate: Face-Daten aus lokalem Cache übernommen (Clotheshop hat keine mitgeschickt)')
+        dbg('skinCacheUpdate: Face-Daten aus lokalem Cache erzwungen (Kleidungsshop darf Gesicht nicht ändern)')
     end
 
     -- WICHTIG: clotheshopActive NICHT deaktivieren!
